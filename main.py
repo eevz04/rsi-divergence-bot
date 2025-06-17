@@ -1,4 +1,4 @@
-# main.py - Bot RSI Divergence Ultra Optimizado v3.0 - VERSIÓN CORREGIDA
+# main.py - Bot RSI Divergence Ultra Optimizado v3.0 - VERSIÓN FINAL CORREGIDA
 import asyncio
 import ccxt
 import pandas as pd
@@ -1396,6 +1396,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-            price_factor = min(price_change * 2, 20)
-            rsi_factor = min(rsi_change * 1.5, 15)
-            tf_factor = self.timeframe_weights.get(timeframe, 1.
