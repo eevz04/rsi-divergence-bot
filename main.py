@@ -289,176 +289,181 @@ class RSIDivergenceBot:
         ]
 
     def load_trending_pairs_safe(self):
-        """Cargar pares trending con seguridad MEJORADA"""
-        try:
-            # Pares básicos que SIEMPRE deben cargarse
-            essential_pairs = [
-                'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT'
-            ]
-            
-            # Pares trending 2025
-            trending_pairs = [
-                'HYPEUSDT', 'MOVEUSDT', 'PENGUUSDT', 'VIRTUALUSDT'
-            ]
-            
-            # Memes populares
-            meme_pairs = [
-                'DOGEUSDT', 'SHIBUSDT', 'PEPEUSDT', 'WIFUSDT'
-            ]
-            
-            # Combinar todas las listas
-            all_target_pairs = essential_pairs + trending_pairs + meme_pairs
-            
-            # FORZAR carga - incluso si all_bybit_pairs está vacío
-            pairs_added = 0
-            for pair in all_target_pairs:
-                try:
-                    # Si all_bybit_pairs está vacío O el par existe, agregarlo
-                    if not self.all_bybit_pairs or pair in self.all_bybit_pairs:
-                        self.active_pairs.add(pair)
-                        pairs_added += 1
-                        logger.info(f"✅ Par agregado: {pair}")
-                except Exception as e:
-                    logger.error(f"❌ Error agregando {pair}: {e}")
-                    # Agregar de todas formas si es un par esencial
-                    if pair in essential_pairs:
-                        self.active_pairs.add(pair)
-                        pairs_added += 1
-                        logger.info(f"🔧 Par esencial forzado: {pair}")
-            
-            logger.info(f"✅ Total pares cargados: {len(self.active_pairs)} ({pairs_added} agregados)")
-            
-            # Si aún no hay pares, forzar los básicos
-            if len(self.active_pairs) == 0:
-                logger.warning("⚠️ No se cargaron pares, forzando básicos...")
-                for pair in essential_pairs:
+    """Cargar pares trending con seguridad MEJORADA"""
+    try:
+        # Pares básicos que SIEMPRE deben cargarse
+        essential_pairs = [
+            'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT'
+        ]
+        
+        # Pares trending 2025
+        trending_pairs = [
+            'HYPEUSDT', 'MOVEUSDT', 'PENGUUSDT', 'VIRTUALUSDT'
+        ]
+        
+        # Memes populares
+        meme_pairs = [
+            'DOGEUSDT', 'SHIBUSDT', 'PEPEUSDT', 'WIFUSDT'
+        ]
+        
+        # Combinar todas las listas
+        all_target_pairs = essential_pairs + trending_pairs + meme_pairs
+        
+        # FORZAR carga - incluso si all_bybit_pairs está vacío
+        pairs_added = 0
+        for pair in all_target_pairs:
+            try:
+                # Si all_bybit_pairs está vacío O el par existe, agregarlo
+                if not self.all_bybit_pairs or pair in self.all_bybit_pairs:
                     self.active_pairs.add(pair)
-                logger.info(f"🔧 Pares básicos forzados: {len(self.active_pairs)}")
-                
-        except Exception as e:
-            logger.error(f"❌ Error en load_trending_pairs_safe: {e}")
-            # Emergencia: cargar pares básicos directamente
-            emergency_pairs = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT']
-            for pair in emergency_pairs:
+                    pairs_added += 1
+                    logger.info(f"✅ Par agregado: {pair}")
+            except Exception as e:
+                logger.error(f"❌ Error agregando {pair}: {e}")
+                # Agregar de todas formas si es un par esencial
+                if pair in essential_pairs:
+                    self.active_pairs.add(pair)
+                    pairs_added += 1
+                    logger.info(f"🔧 Par esencial forzado: {pair}")
+        
+        logger.info(f"✅ Total pares cargados: {len(self.active_pairs)} ({pairs_added} agregados)")
+        
+        # Si aún no hay pares, forzar los básicos
+        if len(self.active_pairs) == 0:
+            logger.warning("⚠️ No se cargaron pares, forzando básicos...")
+            for pair in essential_pairs:
                 self.active_pairs.add(pair)
-            logger.info(f"🚨 Pares de emergencia cargados: {len(self.active_pairs)}")
+            logger.info(f"🔧 Pares básicos forzados: {len(self.active_pairs)}")
+            
+    except Exception as e:
+        logger.error(f"❌ Error en load_trending_pairs_safe: {e}")
+        # Emergencia: cargar pares básicos directamente
+        emergency_pairs = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT']
+        for pair in emergency_pairs:
+            self.active_pairs.add(pair)
+        logger.info(f"🚨 Pares de emergencia cargados: {len(self.active_pairs)}")
 
-    def initialize_ml_model_safe(self):
-        """Inicializar ML con manejo de errores y compatibilidad de versiones"""
-        try:
-            if SKLEARN_AVAILABLE:
-                self.scaler = StandardScaler()
-                self.ml_model = IsolationForest(
-                    contamination=0.1,
-                    random_state=42,
-                    n_estimators=50,  # Reducido para Railway
-                    max_samples='auto',
-                    bootstrap=False
-                )
-                
-                # Entrenar con datos dummy para inicializar el modelo
-                dummy_data = np.random.randn(100, 5)  # 100 samples, 5 features
-                try:
-                    self.ml_model.fit(dummy_data)
-                    logger.info("✅ Modelo ML inicializado y entrenado")
-                except Exception as e:
-                    logger.warning(f"⚠️ Error entrenando modelo inicial: {e}")
-                    self.ml_model = None
-                    self.scaler = None
-            else:
-                logger.warning("⚠️ scikit-learn no disponible, ML deshabilitado")
+def initialize_ml_model_safe(self):
+    """Inicializar ML con manejo de errores y compatibilidad de versiones"""
+    try:
+        if SKLEARN_AVAILABLE:
+            self.scaler = StandardScaler()
+            self.ml_model = IsolationForest(
+                contamination=0.1,
+                random_state=42,
+                n_estimators=50,  # Reducido para Railway
+                max_samples='auto',
+                bootstrap=False
+            )
+            
+            # Entrenar con datos dummy para inicializar el modelo
+            dummy_data = np.random.randn(100, 5)  # 100 samples, 5 features
+            try:
+                self.ml_model.fit(dummy_data)
+                logger.info("✅ Modelo ML inicializado y entrenado")
+            except Exception as e:
+                logger.warning(f"⚠️ Error entrenando modelo inicial: {e}")
                 self.ml_model = None
                 self.scaler = None
-        except Exception as e:
-            logger.error(f"❌ Error inicializando ML: {e}")
+        else:
+            logger.warning("⚠️ scikit-learn no disponible, ML deshabilitado")
             self.ml_model = None
             self.scaler = None
+    except Exception as e:
+        logger.error(f"❌ Error inicializando ML: {e}")
+        self.ml_model = None
+        self.scaler = None
 
-    def setup_webhook_routes(self):
+def setup_webhook_routes(self):
     """Configurar rutas Flask optimizadas"""
     
     @self.app.route('/', methods=['GET'])
-    def home():  # ❌ Esta función está mal indentada
+    def home():
         try:
             return jsonify({
                 "status": "🚀 RSI Divergence Bot v3.0 ULTRA",
-                # ...
+                "version": "3.0-FIXED",
+                "active_pairs": len(self.active_pairs),
+                "total_pairs": len(self.all_bybit_pairs),
+                "uptime": datetime.now().isoformat(),
+                "ml_enabled": self.ml_model is not None,
+                "stats": dict(self.scan_stats)
             })
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
-        @self.app.route('/webhook/tradingview', methods=['POST'])
-        def tradingview_webhook():
-            try:
-                return self.process_tradingview_alert()
-            except Exception as e:
-                logger.error(f"❌ Error en webhook: {e}")
-                return jsonify({'error': str(e)}), 500
-
-        @self.app.route('/health', methods=['GET'])
-        def health_check():
-            return jsonify({
-                "status": "healthy",
-                "timestamp": datetime.now().isoformat(),
-                "active_pairs": len(self.active_pairs)
-            })
-
-    async def get_ohlcv_data_safe(self, symbol: str, timeframe: str, limit: int = 100) -> pd.DataFrame:
-        """Obtener datos OHLCV con manejo de errores robusto"""
+    @self.app.route('/webhook/tradingview', methods=['POST'])
+    def tradingview_webhook():
         try:
-            # Cache key
-            cache_key = f"{symbol}_{timeframe}_{limit}"
-            now = time.time()
-            
-            # Verificar cache
-            if (cache_key in self.price_data_cache and 
-                now - self.price_data_cache[cache_key]['timestamp'] < self.cache_expiry):
-                return self.price_data_cache[cache_key]['data'].copy()
-            
-            # Mapeo correcto de timeframes CON 2h
-            timeframe_map = {
-                '2h': '2h', '4h': '4h', '6h': '6h', 
-                '12h': '12h', '1d': '1d', '1D': '1d'
-            }
-            
-            bybit_timeframe = timeframe_map.get(timeframe, timeframe)
-            
-            # Obtener datos con retry
-            max_retries = 3
-            for attempt in range(max_retries):
-                try:
-                    ohlcv = self.exchange.fetch_ohlcv(symbol, bybit_timeframe, limit=limit)
-                    break
-                except Exception as e:
-                    if attempt == max_retries - 1:
-                        raise e
-                    await asyncio.sleep(1)
-                    continue
-            
-            if not ohlcv or len(ohlcv) < 20:
-                logger.warning(f"⚠️ Datos insuficientes para {symbol} {timeframe}")
-                return pd.DataFrame()
-                
-            df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-            df.set_index('timestamp', inplace=True)
-            
-            # Validar datos
-            if df.isnull().any().any():
-                logger.warning(f"⚠️ Datos con valores nulos en {symbol}")
-                df = df.dropna()
-            
-            # Guardar en cache
-            self.price_data_cache[cache_key] = {
-                'data': df.copy(),
-                'timestamp': now
-            }
-            
-            return df
-            
+            return self.process_tradingview_alert()
         except Exception as e:
-            logger.error(f"❌ Error obteniendo datos {symbol} {timeframe}: {e}")
+            logger.error(f"❌ Error en webhook: {e}")
+            return jsonify({'error': str(e)}), 500
+
+    @self.app.route('/health', methods=['GET'])
+    def health_check():
+        return jsonify({
+            "status": "healthy",
+            "timestamp": datetime.now().isoformat(),
+            "active_pairs": len(self.active_pairs)
+        })
+
+async def get_ohlcv_data_safe(self, symbol: str, timeframe: str, limit: int = 100) -> pd.DataFrame:
+    """Obtener datos OHLCV con manejo de errores robusto"""
+    try:
+        # Cache key
+        cache_key = f"{symbol}_{timeframe}_{limit}"
+        now = time.time()
+        
+        # Verificar cache
+        if (cache_key in self.price_data_cache and 
+            now - self.price_data_cache[cache_key]['timestamp'] < self.cache_expiry):
+            return self.price_data_cache[cache_key]['data'].copy()
+        
+        # Mapeo correcto de timeframes CON 2h
+        timeframe_map = {
+            '2h': '2h', '4h': '4h', '6h': '6h', 
+            '12h': '12h', '1d': '1d', '1D': '1d'
+        }
+        
+        bybit_timeframe = timeframe_map.get(timeframe, timeframe)
+        
+        # Obtener datos con retry
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                ohlcv = self.exchange.fetch_ohlcv(symbol, bybit_timeframe, limit=limit)
+                break
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    raise e
+                await asyncio.sleep(1)
+                continue
+        
+        if not ohlcv or len(ohlcv) < 20:
+            logger.warning(f"⚠️ Datos insuficientes para {symbol} {timeframe}")
             return pd.DataFrame()
+            
+        df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+        df.set_index('timestamp', inplace=True)
+        
+        # Validar datos
+        if df.isnull().any().any():
+            logger.warning(f"⚠️ Datos con valores nulos en {symbol}")
+            df = df.dropna()
+        
+        # Guardar en cache
+        self.price_data_cache[cache_key] = {
+            'data': df.copy(),
+            'timestamp': now
+        }
+        
+        return df
+        
+    except Exception as e:
+        logger.error(f"❌ Error obteniendo datos {symbol} {timeframe}: {e}")
+        return pd.DataFrame()
 
     def calculate_rsi_safe(self, close_prices: np.array, period: int = 14) -> np.array:
         """Calcular RSI con manejo de errores seguro"""
