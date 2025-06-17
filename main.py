@@ -107,20 +107,19 @@ class RSIDivergenceBot:
             self.scan_stats = defaultdict(int)
             self.performance_metrics = defaultdict(list)
             
-            # Configuración optimizada
-            self.timeframes = ['4h', '6h', '8h', '12h', '1d']
-            self.timeframe_weights = {'4h': 1.0, '6h': 1.1, '8h': 1.2, '12h': 1.3, '1d': 1.5}
+            # Configuración optimizada SIN 8h
+            self.timeframes = ['4h', '6h', '12h', '1d']
+            self.timeframe_weights = {'4h': 1.0, '6h': 1.1, '12h': 1.3, '1d': 1.5}
             
-            # Configuración RSI
+            # Configuración RSI SIN 8h
             self.rsi_configs = {
                 '4h': {'period': 14, 'smoothing': 3, 'overbought': 70, 'oversold': 30},
                 '6h': {'period': 14, 'smoothing': 3, 'overbought': 72, 'oversold': 28},
-                '8h': {'period': 14, 'smoothing': 2, 'overbought': 74, 'oversold': 26},
                 '12h': {'period': 14, 'smoothing': 2, 'overbought': 75, 'oversold': 25},
                 '1d': {'period': 14, 'smoothing': 1, 'overbought': 75, 'oversold': 25}
             }
             
-            # Configuración de detección
+            # Configuración de detección SIN 8h
             self.detection_configs = {
                 '4h': {
                     'min_peak_distance': 3,
@@ -137,14 +136,6 @@ class RSIDivergenceBot:
                     'confidence_threshold': 80,
                     'volume_threshold': 1.9,
                     'pattern_lookback': 25
-                },
-                '8h': {
-                    'min_peak_distance': 4,
-                    'min_price_change': 2.5,
-                    'min_rsi_change': 7.0,
-                    'confidence_threshold': 82,
-                    'volume_threshold': 2.0,
-                    'pattern_lookback': 30
                 },
                 '12h': {
                     'min_peak_distance': 5,
@@ -410,7 +401,7 @@ class RSIDivergenceBot:
                 now - self.price_data_cache[cache_key]['timestamp'] < self.cache_expiry):
                 return self.price_data_cache[cache_key]['data'].copy()
             
-            # Mapeo correcto de timeframes (sin 8h)
+            # Mapeo correcto de timeframes SIN 8h
             timeframe_map = {
                 '4h': '4h', '6h': '6h', 
                 '12h': '12h', '1d': '1d', '1D': '1d'
@@ -756,7 +747,6 @@ class RSIDivergenceBot:
                 cooldown_times = {
                     '4h': 3600,   # 1 hora
                     '6h': 5400,   # 1.5 horas
-                    '8h': 7200,   # 2 horas
                     '12h': 10800, # 3 horas
                     '1d': 14400   # 4 horas
                 }
@@ -981,15 +971,10 @@ class RSIDivergenceBot:
             
             logger.info("✅ Comandos de Telegram configurados")
             
-            # Ejecutar polling con configuración optimizada para Railway
+            # Ejecutar polling SIMPLIFICADO
             await self.telegram_app.updater.start_polling(
                 allowed_updates=Update.ALL_TYPES,
-                drop_pending_updates=True,
-                timeout=20,  # Timeout más corto
-                read_timeout=30,  # Read timeout optimizado
-                write_timeout=30,  # Write timeout optimizado
-                connect_timeout=30,  # Connect timeout optimizado
-                pool_timeout=1  # Pool timeout corto
+                drop_pending_updates=True
             )
             
         except Exception as e:
@@ -1203,8 +1188,10 @@ Detecta divergencias RSI en múltiples timeframes con:
 📊 **Comandos principales:**
 • `/start` - Información inicial
 • `/status` - Estado completo del sistema
+• `/pairs` - Ver pares monitoreados
+• `/add SYMBOL` - Agregar par (ej: /add DOGEUSDT)
+• `/remove SYMBOL` - Quitar par (ej: /remove APEUSDT)
 • `/scan_now` - Escaneo manual inmediato
-• `/test_hype` - Test específico HYPEUSDT
 • `/help` - Esta ayuda
 
 🔧 **Correcciones aplicadas:**
@@ -1409,3 +1396,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+            price_factor = min(price_change * 2, 20)
+            rsi_factor = min(rsi_change * 1.5, 15)
+            tf_factor = self.timeframe_weights.get(timeframe, 1.
