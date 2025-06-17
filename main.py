@@ -42,33 +42,6 @@ except ImportError:
 import warnings
 warnings.filterwarnings('ignore')
 
-# ============================================
-# LIMPIEZA DE BOT TELEGRAM (TEMPORAL)
-# ============================================
-async def cleanup_bot():
-    """Limpia webhooks y configuraciones previas del bot"""
-    try:
-        bot = Bot(token=os.getenv('TELEGRAM_TOKEN'))
-        await bot.delete_webhook()
-        print("✅ Webhook eliminado correctamente")
-    except Exception as e:
-        print(f"⚠️ Error limpiando webhook: {e}")
-    finally:
-        try:
-            await bot.close()
-        except:
-            pass
-
-# Ejecuta la limpieza al inicio
-print("🧹 Limpiando configuración del bot...")
-try:
-    asyncio.run(cleanup_bot())
-    print("✅ Limpieza completada")
-    time.sleep(3)  # Espera 3 segundos para evitar flood control
-except Exception as e:
-    print(f"❌ Error en limpieza: {e}")
-    time.sleep(5)  # Espera más tiempo si hay error
-
 # Configuración de logging optimizada
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
