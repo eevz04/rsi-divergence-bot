@@ -1057,7 +1057,7 @@ class RSIDivergenceBot:
     # === COMANDOS DE TELEGRAM MEJORADOS ===
     
     async def cmd_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Comando /start con manejo seguro del ML"""
+        """Comando /start con manejo seguro del Markdown"""
         try:
             # Verificar estado ML de manera segura
             ml_status = "❌ INACTIVO"
@@ -1067,7 +1067,8 @@ class RSIDivergenceBot:
                 try:
                     if self.is_ml_ready():
                         ml_status = "✅ ACTIVO"
-                        ml_details = f"\n🧠 Patterns: {len(self.pattern_history)}"
+                        pattern_count = len(self.pattern_history)
+                        ml_details = f"\n🧠 Patterns: {pattern_count}"
                     else:
                         ml_status = "🔄 INICIALIZANDO"
                 except Exception:
@@ -1075,13 +1076,14 @@ class RSIDivergenceBot:
             elif not SKLEARN_AVAILABLE:
                 ml_status = "📦 LIBRERÍA NO DISPONIBLE"
             
-            message = f"""🚀 **Bot RSI Divergence Ultra v3.0 FIXED**
+            # Usar texto simple sin Markdown para evitar errores de parsing
+            message = f"""🚀 Bot RSI Divergence Ultra v3.0 FIXED
 
-✅ **Estado:** ONLINE
-📊 **Pares activos:** {len(self.active_pairs)}
-🤖 **ML:** {ml_status}{ml_details}
+✅ Estado: ONLINE
+📊 Pares activos: {len(self.active_pairs)}
+🤖 ML: {ml_status}{ml_details}
 
-🔧 **Comandos:**
+🔧 Comandos:
 /status - Estado del sistema
 /pairs - Ver pares monitoreados
 /add SYMBOL - Agregar par
@@ -1089,15 +1091,16 @@ class RSIDivergenceBot:
 /scan_now - Escaneo manual
 /help - Ayuda completa
 
-🎯 **Optimizaciones aplicadas:**
-• Manejo de errores robusto
-• Rate limiting inteligente
-• Cache optimizado
-• ML con compatibilidad de versiones
+🎯 Optimizaciones aplicadas:
+- Manejo de errores robusto
+- Rate limiting inteligente
+- Cache optimizado
+- ML con compatibilidad de versiones
 
-💎 **Sistema funcionando 24/7 en Railway**"""
+💎 Sistema funcionando 24/7 en Railway"""
             
-            await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN)
+            # Enviar sin parse_mode para evitar problemas de Markdown
+            await update.message.reply_text(message)
             
         except Exception as e:
             logger.error(f"❌ Error en /start: {e}")
