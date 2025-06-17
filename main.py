@@ -290,24 +290,59 @@ class RSIDivergenceBot:
         ]
 
     def load_trending_pairs_safe(self):
-        """Cargar pares trending con seguridad"""
+        """Cargar pares trending con seguridad MEJORADA"""
         try:
-            # Pares de alta prioridad
-            priority_pairs = [
-                'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'HYPEUSDT', 'MOVEUSDT',
-                'PENGUUSDT', 'VIRTUALUSDT', 'DOGEUSDT', 'PEPEUSDT'
+            # Pares básicos que SIEMPRE deben cargarse
+            essential_pairs = [
+                'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT'
             ]
             
-            # Verificar que existen en la lista
-            for pair in priority_pairs:
-                if pair in self.all_bybit_pairs or not self.all_bybit_pairs:
-                    self.active_pairs.add(pair)
-                    
-            logger.info(f"✅ Pares activos cargados: {len(self.active_pairs)}")
+            # Pares trending 2025
+            trending_pairs = [
+                'HYPEUSDT', 'MOVEUSDT', 'PENGUUSDT', 'VIRTUALUSDT'
+            ]
             
+            # Memes populares
+            meme_pairs = [
+                'DOGEUSDT', 'SHIBUSDT', 'PEPEUSDT', 'WIFUSDT'
+            ]
+            
+            # Combinar todas las listas
+            all_target_pairs = essential_pairs + trending_pairs + meme_pairs
+            
+            # FORZAR carga - incluso si all_bybit_pairs está vacío
+            pairs_added = 0
+            for pair in all_target_pairs:
+                try:
+                    # Si all_bybit_pairs está vacío O el par existe, agregarlo
+                    if not self.all_bybit_pairs or pair in self.all_bybit_pairs:
+                        self.active_pairs.add(pair)
+                        pairs_added += 1
+                        logger.info(f"✅ Par agregado: {pair}")
+                except Exception as e:
+                    logger.error(f"❌ Error agregando {pair}: {e}")
+                    # Agregar de todas formas si es un par esencial
+                    if pair in essential_pairs:
+                        self.active_pairs.add(pair)
+                        pairs_added += 1
+                        logger.info(f"🔧 Par esencial forzado: {pair}")
+            
+            logger.info(f"✅ Total pares cargados: {len(self.active_pairs)} ({pairs_added} agregados)")
+            
+            # Si aún no hay pares, forzar los básicos
+            if len(self.active_pairs) == 0:
+                logger.warning("⚠️ No se cargaron pares, forzando básicos...")
+                for pair in essential_pairs:
+                    self.active_pairs.add(pair)
+                logger.info(f"🔧 Pares básicos forzados: {len(self.active_pairs)}")
+                
         except Exception as e:
-            logger.error(f"❌ Error cargando pares trending: {e}")
-            self.active_pairs = set(['BTCUSDT', 'ETHUSDT', 'SOLUSDT'])
+            logger.error(f"❌ Error en load_trending_pairs_safe: {e}")
+            # Emergencia: cargar pares básicos directamente
+            emergency_pairs = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT']
+            for pair in emergency_pairs:
+                self.active_pairs.add(pair)
+            logger.info(f"🚨 Pares de emergencia cargados: {len(self.active_pairs)}")
 
     def initialize_ml_model_safe(self):
         """Inicializar ML con manejo de errores"""
