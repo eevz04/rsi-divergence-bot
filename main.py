@@ -986,15 +986,15 @@ class RSIDivergenceBot:
     # === COMANDOS DE TELEGRAM SIMPLIFICADOS ===
     
     async def cmd_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Comando /start"""
-        try:
-            message = f"""🚀 **Bot RSI Divergence Ultra v3.0 FIXED**
+    """Comando /start"""
+    try:
+        message = f"""🚀 *Bot RSI Divergence Ultra v3.0 FIXED*
 
-✅ **Estado:** ONLINE
-📊 **Pares activos:** {len(self.active_pairs)}
-🤖 **ML:** {'✅ ACTIVO' if self.ml_model else '❌ INACTIVO'}
+✅ *Estado:* ONLINE
+📊 *Pares activos:* {len(self.active_pairs)}
+🤖 *ML:* {'✅ ACTIVO' if self.ml_model else '❌ INACTIVO'}
 
-🔧 **Comandos:**
+🔧 *Comandos:*
 /status - Estado del sistema
 /pairs - Ver pares monitoreados
 /add SYMBOL - Agregar par
@@ -1002,19 +1002,19 @@ class RSIDivergenceBot:
 /scan_now - Escaneo manual
 /help - Ayuda completa
 
-🎯 **Optimizaciones aplicadas:**
-• Manejo de errores robusto
-• Rate limiting inteligente
-• Cache optimizado
-• Timeframe mapping corregido
+🎯 *Optimizaciones aplicadas:*
+- Manejo de errores robusto
+- Rate limiting inteligente
+- Cache optimizado
+- Timeframe mapping corregido
 
-💎 **Sistema funcionando 24/7 en Railway**"""
-            
-            await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN)
-            
-        except Exception as e:
-            logger.error(f"❌ Error en /start: {e}")
-            await update.message.reply_text("🤖 Bot RSI Divergence Ultra v3.0 ONLINE")
+💎 *Sistema funcionando 24/7 en Railway*"""
+        
+        await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN)
+        
+    except Exception as e:
+        logger.error(f"❌ Error en /start: {e}")
+        await update.message.reply_text("🤖 Bot RSI Divergence Ultra v3.0 ONLINE")
 
     async def cmd_status(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Comando /status"""
