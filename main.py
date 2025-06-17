@@ -47,26 +47,27 @@ warnings.filterwarnings('ignore')
 # ============================================
 async def cleanup_bot():
     """Limpia webhooks y configuraciones previas del bot"""
-    bot = Bot(token=os.getenv('TELEGRAM_TOKEN'))
     try:
+        bot = Bot(token=os.getenv('TELEGRAM_TOKEN'))
         await bot.delete_webhook()
         print("✅ Webhook eliminado correctamente")
     except Exception as e:
         print(f"⚠️ Error limpiando webhook: {e}")
     finally:
-        await bot.close()
+        try:
+            await bot.close()
+        except:
+            pass
 
 # Ejecuta la limpieza al inicio
 print("🧹 Limpiando configuración del bot...")
 try:
     asyncio.run(cleanup_bot())
     print("✅ Limpieza completada")
+    time.sleep(3)  # Espera 3 segundos para evitar flood control
 except Exception as e:
     print(f"❌ Error en limpieza: {e}")
-
-# ============================================
-# CONFIGURACIÓN PRINCIPAL
-# ============================================
+    time.sleep(5)  # Espera más tiempo si hay error
 
 # Configuración de logging optimizada
 logging.basicConfig(
@@ -997,10 +998,13 @@ class RSIDivergenceBot:
             
             logger.info("✅ Comandos de Telegram configurados")
             
-            # Ejecutar polling SIMPLIFICADO
+            # Ejecutar polling OPTIMIZADO con configuración anti-conflicto
             await self.telegram_app.updater.start_polling(
                 allowed_updates=Update.ALL_TYPES,
-                drop_pending_updates=True
+                drop_pending_updates=True,
+                poll_interval=2.0,  # Aumentar intervalo de polling
+                timeout=30,         # Timeout más largo
+                bootstrap_retries=-1  # Reintentos infinitos
             )
             
         except Exception as e:
