@@ -930,7 +930,9 @@ class RSIDivergenceBot:
             self.telegram_app.add_handler(CommandHandler("help", self.cmd_help))
             self.telegram_app.add_handler(CommandHandler("status", self.cmd_status))
             self.telegram_app.add_handler(CommandHandler("scan_now", self.cmd_scan_now))
-            self.telegram_app.add_handler(CommandHandler("test_hype", self.cmd_test_hype))
+            self.telegram_app.add_handler(CommandHandler("pairs", self.cmd_pairs))
+            self.telegram_app.add_handler(CommandHandler("add", self.cmd_add_pair))
+            self.telegram_app.add_handler(CommandHandler("remove", self.cmd_remove_pair))
             
             # Handler para mensajes no reconocidos
             self.telegram_app.add_handler(MessageHandler(
@@ -966,8 +968,10 @@ class RSIDivergenceBot:
 
 🔧 **Comandos:**
 /status - Estado del sistema
+/pairs - Ver pares monitoreados
+/add SYMBOL - Agregar par
+/remove SYMBOL - Quitar par
 /scan_now - Escaneo manual
-/test_hype - Test HYPEUSDT
 /help - Ayuda completa
 
 🎯 **Optimizaciones aplicadas:**
@@ -1041,57 +1045,108 @@ class RSIDivergenceBot:
             logger.error(f"❌ Error en /scan_now: {e}")
             await update.message.reply_text("❌ Error ejecutando escaneo")
 
-    async def cmd_test_hype(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Comando /test_hype"""
+    async def cmd_pairs(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Comando /pairs - Ver todos los pares monitoreados"""
         try:
-            await update.message.reply_text("🔄 **Ejecutando test HYPEUSDT...**", parse_mode=ParseMode.MARKDOWN)
-            
-            # Asegurar que HYPE está activo
-            if 'HYPEUSDT' not in self.active_pairs:
-                self.active_pairs.add('HYPEUSDT')
-            
-            # Test específico para HYPE
-            data = await self.get_ohlcv_data_safe('HYPEUSDT', '1d', limit=100)
-            
-            if data.empty:
-                await update.message.reply_text("❌ **Error:** No se pudieron obtener datos de HYPEUSDT")
+            if not self.active_pairs:
+                await update.message.reply_text("📭 No hay pares activos", parse_mode=ParseMode.MARKDOWN)
                 return
-            
-            signal = self.detect_divergence_safe(data, '1d')
-            
-            if signal:
-                signal.symbol = 'HYPEUSDT'
-                message = f"""✅ **TEST HYPE 1D - DIVERGENCIA DETECTADA**
-
-{await self.format_alert_message_safe(signal)}
-
-🎯 **Resultado:** Sistema detectando correctamente
-✅ **Timeframe 1d:** Mapeo corregido
-📊 **Datos:** {len(data)} velas obtenidas"""
-            else:
-                current_price = data['close'].iloc[-1]
-                rsi = self.calculate_rsi_safe(data['close'].values)
-                current_rsi = rsi[-1] if not np.isnan(rsi[-1]) else 0
                 
-                message = f"""⚠️ **TEST HYPE 1D - NO DETECTADO**
-
-📊 **Análisis:**
-• Datos: {len(data)} velas ✅
-• Precio actual: {current_price:.2f}
-• RSI actual: {current_rsi:.1f}
-
-💡 **Posibles causas:**
-• Divergencia no presente actualmente
-• Umbrales de confianza no alcanzados
-• Patrón ya procesado anteriormente
-
-🔧 **Sistema funcionando correctamente**"""
+            # Organizar pares
+            pairs_list = sorted(list(self.active_pairs))
+            
+            # Dividir en grupos de 10 para mejor lectura
+            message = f"📊 **Pares Monitoreados ({len(self.active_pairs)} total)**\n\n"
+            
+            for i in range(0, len(pairs_list), 10):
+                batch = pairs_list[i:i+10]
+                message += "• " + " • ".join(batch) + "\n"
+                
+            message += f"\n💡 Usa `/add SYMBOL` para agregar pares"
+            message += f"\n💡 Usa `/remove SYMBOL` para quitar pares"
             
             await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN)
             
         except Exception as e:
-            logger.error(f"❌ Error en /test_hype: {e}")
-            await update.message.reply_text(f"❌ **Error en test:** {str(e)}")
+            logger.error(f"❌ Error en /pairs: {e}")
+            await update.message.reply_text("❌ Error mostrando pares")
+
+    async def cmd_add_pair(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Comando /add SYMBOL - Agregar par"""
+        try:
+            if not context.args:
+                await update.message.reply_text(
+                    "📝 **Uso:** `/add SYMBOL`\n\n**Ejemplos:**\n• `/add DOGEUSDT`\n• `/add ADAUSDT`",
+                    parse_mode=ParseMode.MARKDOWN
+                )
+                return
+                
+            symbol = context.args[0].upper()
+            
+            # Verificar que termine en USDT
+            if not symbol.endswith('USDT'):
+                symbol += 'USDT'
+            
+            # Verificar si ya está activo
+            if symbol in self.active_pairs:
+                await update.message.reply_text(f"⚠️ **{symbol}** ya está siendo monitoreado", parse_mode=ParseMode.MARKDOWN)
+                return
+                
+            # Verificar que existe en Bybit (si la lista está disponible)
+            if self.all_bybit_pairs and symbol not in self.all_bybit_pairs:
+                # Buscar similares
+                search_term = symbol.replace('USDT', '')
+                similar = [p for p in self.all_bybit_pairs if search_term in p]
+                
+                message = f"❌ **{symbol}** no encontrado en Bybit"
+                if similar[:5]:  # Mostrar solo los primeros 5
+                    message += f"\n\n🔍 **Similares:**\n• " + "\n• ".join(similar[:5])
+                    
+                await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN)
+                return
+                
+            # Agregar el par
+            self.active_pairs.add(symbol)
+            
+            await update.message.reply_text(
+                f"✅ **{symbol}** agregado al monitoreo\n📊 **Total pares:** {len(self.active_pairs)}",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            
+        except Exception as e:
+            logger.error(f"❌ Error en /add: {e}")
+            await update.message.reply_text("❌ Error agregando par")
+
+    async def cmd_remove_pair(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Comando /remove SYMBOL - Quitar par"""
+        try:
+            if not context.args:
+                await update.message.reply_text(
+                    "📝 **Uso:** `/remove SYMBOL`\n\n**Ejemplos:**\n• `/remove APEUSDT`\n• `/remove SHIBUSDT`",
+                    parse_mode=ParseMode.MARKDOWN
+                )
+                return
+                
+            symbol = context.args[0].upper()
+            
+            # Verificar que termine en USDT
+            if not symbol.endswith('USDT'):
+                symbol += 'USDT'
+                
+            if symbol not in self.active_pairs:
+                await update.message.reply_text(f"❌ **{symbol}** no está en monitoreo", parse_mode=ParseMode.MARKDOWN)
+                return
+                
+            self.active_pairs.remove(symbol)
+            
+            await update.message.reply_text(
+                f"🗑️ **{symbol}** removido del monitoreo\n📊 **Total pares:** {len(self.active_pairs)}",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            
+        except Exception as e:
+            logger.error(f"❌ Error en /remove: {e}")
+            await update.message.reply_text("❌ Error removiendo par")
 
     async def cmd_help(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Comando /help"""
@@ -1193,10 +1248,6 @@ Detecta divergencias RSI en múltiples timeframes con:
 • ✅ Cache inteligente con limpieza automática
 • ✅ Timeframe mapping corregido
 • ✅ Fallbacks para todas las librerías
-
-🔥 **Pares especiales:**
-• HYPEUSDT ✅ (caso específico corregido)
-• MOVEUSDT, PENGUUSDT, VIRTUALUSDT ✅
 
 🎯 **Sistema ultra robusto funcionando 24/7**
 
