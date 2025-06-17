@@ -410,9 +410,9 @@ class RSIDivergenceBot:
                 now - self.price_data_cache[cache_key]['timestamp'] < self.cache_expiry):
                 return self.price_data_cache[cache_key]['data'].copy()
             
-            # Mapeo correcto de timeframes
+            # Mapeo correcto de timeframes (sin 8h)
             timeframe_map = {
-                '4h': '4h', '6h': '6h', '8h': '8h', 
+                '4h': '4h', '6h': '6h', 
                 '12h': '12h', '1d': '1d', '1D': '1d'
             }
             
@@ -981,10 +981,15 @@ class RSIDivergenceBot:
             
             logger.info("✅ Comandos de Telegram configurados")
             
-            # Ejecutar polling
+            # Ejecutar polling con configuración optimizada para Railway
             await self.telegram_app.updater.start_polling(
                 allowed_updates=Update.ALL_TYPES,
-                drop_pending_updates=True
+                drop_pending_updates=True,
+                timeout=20,  # Timeout más corto
+                read_timeout=30,  # Read timeout optimizado
+                write_timeout=30,  # Write timeout optimizado
+                connect_timeout=30,  # Connect timeout optimizado
+                pool_timeout=1  # Pool timeout corto
             )
             
         except Exception as e:
