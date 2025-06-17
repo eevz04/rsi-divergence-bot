@@ -1019,26 +1019,26 @@ class RSIDivergenceBot:
     async def cmd_status(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Comando /status"""
         try:
-            message = f"""📊 **Estado Bot RSI Ultra v3.0**
+            message = f"""📊 *Estado Bot RSI Ultra v3.0*
 
-🔄 **Estado:** ✅ ONLINE (Versión CORREGIDA)
-📈 **Pares monitoreados:** {len(self.active_pairs)}
-🌐 **Total disponibles:** {len(self.all_bybit_pairs)}
-⏰ **Timeframes:** {', '.join(self.timeframes)}
+🔄 *Estado:* ✅ ONLINE (Versión CORREGIDA)
+📈 *Pares monitoreados:* {len(self.active_pairs)}
+🌐 *Total disponibles:* {len(self.all_bybit_pairs)}
+⏰ *Timeframes:* {', '.join(self.timeframes)}
 
-📊 **Estadísticas:**
-• Escaneos: {self.scan_stats.get('scans_completed', 0)}
-• Divergencias: {self.scan_stats.get('divergences_found', 0)}
-• Alertas enviadas: {self.scan_stats.get('alerts_sent', 0)}
-• TradingView: {self.scan_stats.get('tradingview_alerts', 0)}
-• Errores: {self.scan_stats.get('scan_errors', 0)}
+📊 *Estadísticas:*
+- Escaneos: {self.scan_stats.get('scans_completed', 0)}
+- Divergencias: {self.scan_stats.get('divergences_found', 0)}
+- Alertas enviadas: {self.scan_stats.get('alerts_sent', 0)}
+- TradingView: {self.scan_stats.get('tradingview_alerts', 0)}
+- Errores: {self.scan_stats.get('scan_errors', 0)}
 
-🤖 **Machine Learning:** {'✅ ACTIVO' if self.ml_model else '❌ INACTIVO'}
-💾 **Cache:** {len(self.price_data_cache)} pares
-⚡ **Último escaneo:** {self.scan_stats.get('last_scan_duration', 0):.1f}s
+🤖 *Machine Learning:* {'✅ ACTIVO' if self.ml_model else '❌ INACTIVO'}
+💾 *Cache:* {len(self.price_data_cache)} pares
+⚡ *Último escaneo:* {self.scan_stats.get('last_scan_duration', 0):.1f}s
 
-🌐 **Servidor:** Railway EU West
-🔗 **Webhook:** ACTIVO"""
+🌐 *Servidor:* Railway EU West
+🔗 *Webhook:* ACTIVO"""
             
             await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN)
             
