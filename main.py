@@ -54,7 +54,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 @dataclass
-@dataclass
 class DivergenceSignal:
     symbol: str
     timeframe: str
@@ -417,7 +416,7 @@ class RSIDivergenceBot:
             })
 
     async def get_ohlcv_data_safe(self, symbol: str, timeframe: str, limit: int = 100) -> pd.DataFrame:
-    """Obtener datos OHLCV con manejo de errores robusto"""
+        """Obtener datos OHLCV con manejo de errores robusto"""
     try:
         # Cache key
         cache_key = f"{symbol}_{timeframe}_{limit}"
