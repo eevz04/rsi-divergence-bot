@@ -1,3 +1,4 @@
+# main.py - Bot RSI Divergence Ultra Optimizado v3.0 - VERSIÓN FINAL CORREGIDA
 import asyncio
 import ccxt
 import pandas as pd
@@ -75,111 +76,117 @@ class DivergenceSignal:
 
 class RSIDivergenceBot:
     def __init__(self):
-        """Inicializar bot ultra optimizado con manejo de errores robusto"""
-        try:
-            # Configuración desde ENV con valores por defecto
-            self.telegram_token = os.getenv('TELEGRAM_TOKEN')
-            self.chat_id = os.getenv('CHAT_ID')
-            self.bybit_api_key = os.getenv('BYBIT_API_KEY', '')
-            self.bybit_secret = os.getenv('BYBIT_SECRET', '')
-            self.port = int(os.getenv('PORT', 8080))
-            
-            # Validar configuración crítica
-            self._validate_config()
-            
-            # Inicializar componentes básicos
-            self.bot = None
-            self.app = Flask(__name__)
-            self.telegram_app = None
-            
-            # Configurar exchange con manejo de errores
-            self.exchange = self._setup_exchange()
-            
-            # Configurar rutas web
-            self.setup_webhook_routes()
-            
-            # Datos del bot
-            self.all_bybit_pairs = []
-            self.active_pairs = set()
-            self.sent_alerts = {}
-            self.htf_levels = {}
-            self.scan_stats = defaultdict(int)
-            self.performance_metrics = defaultdict(list)
-            
-            # Configuración optimizada CON 2h para mejor timing
-            self.timeframes = ['2h', '4h', '6h', '12h', '1d']
-            self.timeframe_weights = {'2h': 0.9, '4h': 1.0, '6h': 1.1, '12h': 1.3, '1d': 1.5}
-            
-            # Configuración RSI CON 2h
-            self.rsi_configs = {
-                '2h': {'period': 14, 'smoothing': 3, 'overbought': 70, 'oversold': 30},
-                '4h': {'period': 14, 'smoothing': 3, 'overbought': 70, 'oversold': 30},
-                '6h': {'period': 14, 'smoothing': 3, 'overbought': 72, 'oversold': 28},
-                '12h': {'period': 14, 'smoothing': 2, 'overbought': 75, 'oversold': 25},
-                '1d': {'period': 14, 'smoothing': 1, 'overbought': 75, 'oversold': 25}
+    """Inicializar bot ultra optimizado con manejo de errores robusto"""
+    try:
+        # Configuración desde ENV con valores por defecto
+        self.telegram_token = os.getenv('TELEGRAM_TOKEN')
+        self.chat_id = os.getenv('CHAT_ID')
+        self.bybit_api_key = os.getenv('BYBIT_API_KEY', '')
+        self.bybit_secret = os.getenv('BYBIT_SECRET', '')
+        self.port = int(os.getenv('PORT', 8080))
+        
+        # Validar configuración crítica
+        self._validate_config()
+        
+        # Inicializar componentes básicos
+        self.bot = None
+        self.app = Flask(__name__)
+        self.telegram_app = None
+        
+        # Configurar exchange con manejo de errores
+        self.exchange = self._setup_exchange()
+        
+        # Configurar rutas web
+        self.setup_webhook_routes()
+        
+        # Datos del bot
+        self.all_bybit_pairs = []
+        self.active_pairs = set()
+        self.sent_alerts = {}
+        self.htf_levels = {}
+        self.scan_stats = defaultdict(int)
+        self.performance_metrics = defaultdict(list)
+        
+        # ✅ NUEVA CONFIGURACIÓN CON 2H PARA TIMING AGRESIVO
+        self.timeframes = ['2h', '4h', '6h', '12h', '1d']
+        self.timeframe_weights = {
+            '2h': 0.9,   # Peso específico para 2h (timing agresivo)
+            '4h': 1.0, 
+            '6h': 1.1, 
+            '12h': 1.3, 
+            '1d': 1.5
+        }
+        
+        # ✅ CONFIGURACIÓN RSI ESPECÍFICA PARA CADA TIMEFRAME CON 2H
+        self.rsi_configs = {
+            '2h': {'period': 14, 'smoothing': 3, 'overbought': 70, 'oversold': 30},
+            '4h': {'period': 14, 'smoothing': 3, 'overbought': 70, 'oversold': 30},
+            '6h': {'period': 14, 'smoothing': 3, 'overbought': 72, 'oversold': 28},
+            '12h': {'period': 14, 'smoothing': 2, 'overbought': 75, 'oversold': 25},
+            '1d': {'period': 14, 'smoothing': 1, 'overbought': 75, 'oversold': 25}
+        }
+        
+        # ✅ CONFIGURACIÓN DE DETECCIÓN PREMIUM - ALTA CONFIANZA CON 2H
+        self.detection_configs = {
+            '2h': {
+                'min_peak_distance': 3,
+                'min_price_change': 2.0,      # Movimientos ≥2% para 2h
+                'min_rsi_change': 6.0,        # Divergencias fuertes para 2h
+                'confidence_threshold': 82,    # Solo alertas ≥82% para 2h
+                'volume_threshold': 1.8,
+                'pattern_lookback': 18
+            },
+            '4h': {
+                'min_peak_distance': 3,
+                'min_price_change': 2.5,      # Movimientos significativos
+                'min_rsi_change': 7.0,        # Divergencias claras
+                'confidence_threshold': 84,    # Alta confianza
+                'volume_threshold': 1.9,
+                'pattern_lookback': 20
+            },
+            '6h': {
+                'min_peak_distance': 4,
+                'min_price_change': 3.0,      # Movimientos fuertes
+                'min_rsi_change': 8.0,        # Divergencias robustas
+                'confidence_threshold': 86,    # Muy alta confianza
+                'volume_threshold': 2.0,
+                'pattern_lookback': 25
+            },
+            '12h': {
+                'min_peak_distance': 5,
+                'min_price_change': 3.5,      # Movimientos importantes
+                'min_rsi_change': 9.0,        # Divergencias poderosas
+                'confidence_threshold': 88,    # Confianza premium
+                'volume_threshold': 2.2,
+                'pattern_lookback': 35
+            },
+            '1d': {
+                'min_peak_distance': 5,
+                'min_price_change': 4.5,      # Movimientos mayores
+                'min_rsi_change': 10.0,       # Divergencias fuertes
+                'confidence_threshold': 90,    # Máxima confianza
+                'volume_threshold': 2.3,
+                'pattern_lookback': 40
             }
-            
-            # Configuración de detección premium - Alta confianza
-            self.detection_configs = {
-                '2h': {
-                    'min_peak_distance': 3,
-                    'min_price_change': 2.0,      # Más estricto: movimientos ≥2%
-                    'min_rsi_change': 6.0,        # Divergencias más fuertes
-                    'confidence_threshold': 82,    # Solo alertas ≥82%
-                    'volume_threshold': 1.8,
-                    'pattern_lookback': 18
-                },
-                '4h': {
-                    'min_peak_distance': 3,
-                    'min_price_change': 2.5,      # Movimientos significativos
-                    'min_rsi_change': 7.0,        # Divergencias claras
-                    'confidence_threshold': 84,    # Alta confianza
-                    'volume_threshold': 1.9,
-                    'pattern_lookback': 20
-                },
-                '6h': {
-                    'min_peak_distance': 4,
-                    'min_price_change': 3.0,      # Movimientos fuertes
-                    'min_rsi_change': 8.0,        # Divergencias robustas
-                    'confidence_threshold': 86,    # Muy alta confianza
-                    'volume_threshold': 2.0,
-                    'pattern_lookback': 25
-                },
-                '12h': {
-                    'min_peak_distance': 5,
-                    'min_price_change': 3.5,      # Movimientos importantes
-                    'min_rsi_change': 9.0,        # Divergencias poderosas
-                    'confidence_threshold': 88,    # Confianza premium
-                    'volume_threshold': 2.2,
-                    'pattern_lookback': 35
-                },
-                '1d': {
-                    'min_peak_distance': 5,
-                    'min_price_change': 4.5,      # Movimientos mayores
-                    'min_rsi_change': 10.0,       # Divergencias fuertes
-                    'confidence_threshold': 90,    # Máxima confianza
-                    'volume_threshold': 2.3,
-                    'pattern_lookback': 40
-                }
-            }
-            
-            # Machine Learning (opcional)
-            self.ml_model = None
-            self.scaler = None
-            self.pattern_history = deque(maxlen=1000)
-            
-            # Cache optimizado
-            self.price_data_cache = {}
-            self.cache_expiry = 300  # 5 minutos
-            
-            # Inicialización segura
-            self.initialize_data_safe()
-            
-            logger.info("✅ Bot RSI Divergence Ultra v3.0 inicializado correctamente")
-            
-        except Exception as e:
-            logger.error(f"❌ Error crítico inicializando bot: {e}")
-            raise
+        }
+        
+        # Machine Learning (opcional)
+        self.ml_model = None
+        self.scaler = None
+        self.pattern_history = deque(maxlen=1000)
+        
+        # Cache optimizado
+        self.price_data_cache = {}
+        self.cache_expiry = 300  # 5 minutos
+        
+        # Inicialización segura
+        self.initialize_data_safe()
+        
+        logger.info("✅ Bot RSI Divergence Ultra v3.0 con 2h inicializado correctamente")
+        
+    except Exception as e:
+        logger.error(f"❌ Error crítico inicializando bot: {e}")
+        raise
 
     def _validate_config(self):
         """Validar configuración crítica con mejor manejo de errores"""
@@ -289,126 +296,126 @@ class RSIDivergenceBot:
         ]
 
     def load_trending_pairs_safe(self):
-    """Cargar pares trending con seguridad MEJORADA"""
-    try:
-        # Pares básicos que SIEMPRE deben cargarse
-        essential_pairs = [
-            'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT'
-        ]
-        
-        # Pares trending 2025
-        trending_pairs = [
-            'HYPEUSDT', 'MOVEUSDT', 'PENGUUSDT', 'VIRTUALUSDT'
-        ]
-        
-        # Memes populares
-        meme_pairs = [
-            'DOGEUSDT', 'SHIBUSDT', 'PEPEUSDT', 'WIFUSDT'
-        ]
-        
-        # Combinar todas las listas
-        all_target_pairs = essential_pairs + trending_pairs + meme_pairs
-        
-        # FORZAR carga - incluso si all_bybit_pairs está vacío
-        pairs_added = 0
-        for pair in all_target_pairs:
-            try:
-                # Si all_bybit_pairs está vacío O el par existe, agregarlo
-                if not self.all_bybit_pairs or pair in self.all_bybit_pairs:
+        """Cargar pares trending con seguridad MEJORADA"""
+        try:
+            # Pares básicos que SIEMPRE deben cargarse
+            essential_pairs = [
+                'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT'
+            ]
+            
+            # Pares trending 2025
+            trending_pairs = [
+                'HYPEUSDT', 'MOVEUSDT', 'PENGUUSDT', 'VIRTUALUSDT'
+            ]
+            
+            # Memes populares
+            meme_pairs = [
+                'DOGEUSDT', 'SHIBUSDT', 'PEPEUSDT', 'WIFUSDT'
+            ]
+            
+            # Combinar todas las listas
+            all_target_pairs = essential_pairs + trending_pairs + meme_pairs
+            
+            # FORZAR carga - incluso si all_bybit_pairs está vacío
+            pairs_added = 0
+            for pair in all_target_pairs:
+                try:
+                    # Si all_bybit_pairs está vacío O el par existe, agregarlo
+                    if not self.all_bybit_pairs or pair in self.all_bybit_pairs:
+                        self.active_pairs.add(pair)
+                        pairs_added += 1
+                        logger.info(f"✅ Par agregado: {pair}")
+                except Exception as e:
+                    logger.error(f"❌ Error agregando {pair}: {e}")
+                    # Agregar de todas formas si es un par esencial
+                    if pair in essential_pairs:
+                        self.active_pairs.add(pair)
+                        pairs_added += 1
+                        logger.info(f"🔧 Par esencial forzado: {pair}")
+            
+            logger.info(f"✅ Total pares cargados: {len(self.active_pairs)} ({pairs_added} agregados)")
+            
+            # Si aún no hay pares, forzar los básicos
+            if len(self.active_pairs) == 0:
+                logger.warning("⚠️ No se cargaron pares, forzando básicos...")
+                for pair in essential_pairs:
                     self.active_pairs.add(pair)
-                    pairs_added += 1
-                    logger.info(f"✅ Par agregado: {pair}")
-            except Exception as e:
-                logger.error(f"❌ Error agregando {pair}: {e}")
-                # Agregar de todas formas si es un par esencial
-                if pair in essential_pairs:
-                    self.active_pairs.add(pair)
-                    pairs_added += 1
-                    logger.info(f"🔧 Par esencial forzado: {pair}")
-        
-        logger.info(f"✅ Total pares cargados: {len(self.active_pairs)} ({pairs_added} agregados)")
-        
-        # Si aún no hay pares, forzar los básicos
-        if len(self.active_pairs) == 0:
-            logger.warning("⚠️ No se cargaron pares, forzando básicos...")
-            for pair in essential_pairs:
+                logger.info(f"🔧 Pares básicos forzados: {len(self.active_pairs)}")
+                
+        except Exception as e:
+            logger.error(f"❌ Error en load_trending_pairs_safe: {e}")
+            # Emergencia: cargar pares básicos directamente
+            emergency_pairs = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT']
+            for pair in emergency_pairs:
                 self.active_pairs.add(pair)
-            logger.info(f"🔧 Pares básicos forzados: {len(self.active_pairs)}")
-            
-    except Exception as e:
-        logger.error(f"❌ Error en load_trending_pairs_safe: {e}")
-        # Emergencia: cargar pares básicos directamente
-        emergency_pairs = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT']
-        for pair in emergency_pairs:
-            self.active_pairs.add(pair)
-        logger.info(f"🚨 Pares de emergencia cargados: {len(self.active_pairs)}")
+            logger.info(f"🚨 Pares de emergencia cargados: {len(self.active_pairs)}")
 
-def initialize_ml_model_safe(self):
-    """Inicializar ML con manejo de errores y compatibilidad de versiones"""
-    try:
-        if SKLEARN_AVAILABLE:
-            self.scaler = StandardScaler()
-            self.ml_model = IsolationForest(
-                contamination=0.1,
-                random_state=42,
-                n_estimators=50,  # Reducido para Railway
-                max_samples='auto',
-                bootstrap=False
-            )
-            
-            # Entrenar con datos dummy para inicializar el modelo
-            dummy_data = np.random.randn(100, 5)  # 100 samples, 5 features
-            try:
-                self.ml_model.fit(dummy_data)
-                logger.info("✅ Modelo ML inicializado y entrenado")
-            except Exception as e:
-                logger.warning(f"⚠️ Error entrenando modelo inicial: {e}")
+    def initialize_ml_model_safe(self):
+        """Inicializar ML con manejo de errores y compatibilidad de versiones"""
+        try:
+            if SKLEARN_AVAILABLE:
+                self.scaler = StandardScaler()
+                self.ml_model = IsolationForest(
+                    contamination=0.1,
+                    random_state=42,
+                    n_estimators=50,  # Reducido para Railway
+                    max_samples='auto',
+                    bootstrap=False
+                )
+                
+                # Entrenar con datos dummy para inicializar el modelo
+                dummy_data = np.random.randn(100, 5)  # 100 samples, 5 features
+                try:
+                    self.ml_model.fit(dummy_data)
+                    logger.info("✅ Modelo ML inicializado y entrenado")
+                except Exception as e:
+                    logger.warning(f"⚠️ Error entrenando modelo inicial: {e}")
+                    self.ml_model = None
+                    self.scaler = None
+            else:
+                logger.warning("⚠️ scikit-learn no disponible, ML deshabilitado")
                 self.ml_model = None
                 self.scaler = None
-        else:
-            logger.warning("⚠️ scikit-learn no disponible, ML deshabilitado")
+        except Exception as e:
+            logger.error(f"❌ Error inicializando ML: {e}")
             self.ml_model = None
             self.scaler = None
-    except Exception as e:
-        logger.error(f"❌ Error inicializando ML: {e}")
-        self.ml_model = None
-        self.scaler = None
 
-def setup_webhook_routes(self):
-    """Configurar rutas Flask optimizadas"""
-    
-    @self.app.route('/', methods=['GET'])
-    def home():
-        try:
+    def setup_webhook_routes(self):
+        """Configurar rutas Flask optimizadas"""
+        
+        @self.app.route('/', methods=['GET'])
+        def home():
+            try:
+                return jsonify({
+                    "status": "🚀 RSI Divergence Bot v3.0 ULTRA",
+                    "version": "3.0-FIXED",
+                    "active_pairs": len(self.active_pairs),
+                    "total_pairs": len(self.all_bybit_pairs),
+                    "uptime": datetime.now().isoformat(),
+                    "ml_enabled": self.ml_model is not None,
+                    "stats": dict(self.scan_stats)
+                })
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route('/webhook/tradingview', methods=['POST'])
+        def tradingview_webhook():
+            try:
+                return self.process_tradingview_alert()
+            except Exception as e:
+                logger.error(f"❌ Error en webhook: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/health', methods=['GET'])
+        def health_check():
             return jsonify({
-                "status": "🚀 RSI Divergence Bot v3.0 ULTRA",
-                "version": "3.0-FIXED",
-                "active_pairs": len(self.active_pairs),
-                "total_pairs": len(self.all_bybit_pairs),
-                "uptime": datetime.now().isoformat(),
-                "ml_enabled": self.ml_model is not None,
-                "stats": dict(self.scan_stats)
+                "status": "healthy",
+                "timestamp": datetime.now().isoformat(),
+                "active_pairs": len(self.active_pairs)
             })
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
 
-    @self.app.route('/webhook/tradingview', methods=['POST'])
-    def tradingview_webhook():
-        try:
-            return self.process_tradingview_alert()
-        except Exception as e:
-            logger.error(f"❌ Error en webhook: {e}")
-            return jsonify({'error': str(e)}), 500
-
-    @self.app.route('/health', methods=['GET'])
-    def health_check():
-        return jsonify({
-            "status": "healthy",
-            "timestamp": datetime.now().isoformat(),
-            "active_pairs": len(self.active_pairs)
-        })
-
-async def get_ohlcv_data_safe(self, symbol: str, timeframe: str, limit: int = 100) -> pd.DataFrame:
+    async def get_ohlcv_data_safe(self, symbol: str, timeframe: str, limit: int = 100) -> pd.DataFrame:
     """Obtener datos OHLCV con manejo de errores robusto"""
     try:
         # Cache key
@@ -420,10 +427,14 @@ async def get_ohlcv_data_safe(self, symbol: str, timeframe: str, limit: int = 10
             now - self.price_data_cache[cache_key]['timestamp'] < self.cache_expiry):
             return self.price_data_cache[cache_key]['data'].copy()
         
-        # Mapeo correcto de timeframes CON 2h
+        # ✅ MAPEO CORRECTO DE TIMEFRAMES CON 2H
         timeframe_map = {
-            '2h': '2h', '4h': '4h', '6h': '6h', 
-            '12h': '12h', '1d': '1d', '1D': '1d'
+            '2h': '2h',   # ✅ AGREGADO SOPORTE PARA 2H
+            '4h': '4h', 
+            '6h': '6h', 
+            '12h': '12h', 
+            '1d': '1d', 
+            '1D': '1d'
         }
         
         bybit_timeframe = timeframe_map.get(timeframe, timeframe)
@@ -677,7 +688,7 @@ async def get_ohlcv_data_safe(self, symbol: str, timeframe: str, limit: int = 10
             
             p1, p2 = recent_price_peaks[-2:]
             r1, r2 = recent_rsi_peaks[-2:]
-          
+            
             # Verificar divergencia
             price_higher = closes[p2] > closes[p1]
             rsi_lower = rsi[r2] < rsi[r1]
@@ -760,98 +771,119 @@ async def get_ohlcv_data_safe(self, symbol: str, timeframe: str, limit: int = 10
             return None
 
     def calculate_confidence_safe(self, price_change: float, rsi_change: float, timeframe: str) -> float:
-        """Calcular confianza optimizada para valores más altos"""
-        try:
-            base_confidence = 55.0  # Base más alta
-            
-            # Factores mejorados:
+    """Calcular confianza optimizada para valores más altos CON 2H"""
+    try:
+        # ✅ BASE DE CONFIANZA ESPECÍFICA PARA 2H
+        if timeframe == '2h':
+            base_confidence = 60.0  # Base más alta para 2h (timing agresivo)
+        else:
+            base_confidence = 55.0
+        
+        # ✅ FACTORES MEJORADOS PARA 2H:
+        if timeframe == '2h':
+            price_factor = min(price_change * 3.0, 25)    # Mayor peso para 2h
+            rsi_factor = min(rsi_change * 2.5, 20)        # Mayor peso para 2h
+            tf_factor = self.timeframe_weights.get(timeframe, 1.0) * 8  # Bonus para 2h
+        else:
             price_factor = min(price_change * 2.5, 25)    # Mayor peso al precio
             rsi_factor = min(rsi_change * 2.0, 20)        # Mayor peso al RSI  
             tf_factor = self.timeframe_weights.get(timeframe, 1.0) * 6  # Mayor peso TF
-            
-            # Bonificación por fuerza combinada:
-            combined_strength = (price_change * rsi_change) / 10
-            strength_bonus = min(combined_strength, 10)
-            
-            confidence = base_confidence + price_factor + rsi_factor + tf_factor + strength_bonus
-            return min(confidence, 98.0)  # Máximo 98%
-            
-        except Exception as e:
-            logger.error(f"❌ Error calculando confianza: {e}")
-            return 85.0  # Default alto
+        
+        # ✅ BONIFICACIÓN POR FUERZA COMBINADA:
+        combined_strength = (price_change * rsi_change) / 10
+        strength_bonus = min(combined_strength, 10)
+        
+        # ✅ BONUS ESPECÍFICO PARA 2H (timing agresivo)
+        timing_bonus = 3.0 if timeframe == '2h' else 0.0
+        
+        confidence = base_confidence + price_factor + rsi_factor + tf_factor + strength_bonus + timing_bonus
+        return min(confidence, 98.0)  # Máximo 98%
+        
+    except Exception as e:
+        logger.error(f"❌ Error calculando confianza: {e}")
+        return 85.0  # Default alto
 
     def classify_pattern_strength(self, confidence: float) -> str:
-        """Clasificar fuerza con umbrales más altos"""
-        if confidence >= 95:
-            return "VERY_STRONG"
-        elif confidence >= 90:
-            return "STRONG"
-        elif confidence >= 85:
-            return "MEDIUM"
-        else:
-            return "WEAK"
+    """Clasificar fuerza con umbrales más altos"""
+    if confidence >= 95:
+        return "VERY_STRONG"
+    elif confidence >= 90:
+        return "STRONG"
+    elif confidence >= 85:
+        return "MEDIUM"
+    else:
+        return "WEAK"
 
     async def format_alert_message_safe(self, signal: DivergenceSignal) -> str:
-        """Formatear mensaje de alerta con información ML"""
-        try:
-            confidence_emoji = '🔥' if signal.confidence >= 90 else '⚡' if signal.confidence >= 85 else '🟠'
-            type_emoji = '📈🟢' if 'bullish' in signal.type else '📉🔴'
-            
-            # Información ML si está disponible
-            ml_info = ""
-            if signal.ml_probability > 0:
-                ml_emoji = '🧠' if signal.ml_probability >= 70 else '🤖'
-                ml_info = f"\n{ml_emoji} **ML Probability:** {signal.ml_probability:.1f}%"
-            
-            message = f"""{confidence_emoji} **DIVERGENCIA DETECTADA** {confidence_emoji}
+    """Formatear mensaje de alerta con información ML y específico para 2h"""
+    try:
+        confidence_emoji = '🔥' if signal.confidence >= 90 else '⚡' if signal.confidence >= 85 else '🟠'
+        type_emoji = '📈🟢' if 'bullish' in signal.type else '📉🔴'
+        
+        # ✅ EMOJI ESPECÍFICO PARA 2H (timing agresivo)
+        speed_emoji = '⚡⚡' if signal.timeframe == '2h' else '📊'
+        
+        # ✅ INFORMACIÓN DE TIMING PARA 2H
+        timing_info = ""
+        if signal.timeframe == '2h':
+            timing_info = "\n⚡ **TIMING AGRESIVO** - Señal de 2h para entrada rápida"
+        
+        # Información ML si está disponible
+        ml_info = ""
+        if signal.ml_probability > 0:
+            ml_emoji = '🧠' if signal.ml_probability >= 70 else '🤖'
+            ml_info = f"\n{ml_emoji} **ML Probability:** {signal.ml_probability:.1f}%"
+        
+        message = f"""{confidence_emoji} **DIVERGENCIA DETECTADA** {confidence_emoji}
 
 📌 **Par:** `{signal.symbol}`
 💰 **Precio:** {signal.price_level:.6f}
 {type_emoji} **Tipo:** {signal.type.replace('_', ' ').title()}
 📊 **RSI:** {signal.rsi_value:.1f}
-⏰ **TF:** {signal.timeframe}
+{speed_emoji} **TF:** {signal.timeframe}
 🎯 **Confianza:** {signal.confidence:.0f}%
-💪 **Fuerza:** {signal.pattern_strength.upper()}{ml_info}
+💪 **Fuerza:** {signal.pattern_strength.upper()}{timing_info}{ml_info}
 
 📈 **Métricas:**
 • RSI Div: {signal.rsi_divergence_strength:.1f}
 • Price Div: {signal.price_divergence_strength:.1f}%
 
-🤖 **Bot Ultra v3.0** | {signal.timestamp.strftime('%H:%M:%S')}"""
-            
-            return message
-            
-        except Exception as e:
-            logger.error(f"❌ Error formateando mensaje: {e}")
-            return f"🔥 **DIVERGENCIA DETECTADA**\n\n📌 **Par:** {signal.symbol}\n💰 **Precio:** {signal.price_level:.6f}"
+🤖 **Bot Ultra v3.0 con 2h** | {signal.timestamp.strftime('%H:%M:%S')}"""
+        
+        return message
+        
+    except Exception as e:
+        logger.error(f"❌ Error formateando mensaje: {e}")
+        return f"🔥 **DIVERGENCIA DETECTADA**\n\n📌 **Par:** {signal.symbol}\n💰 **Precio:** {signal.price_level:.6f}"
 
     def is_duplicate_alert_safe(self, signal: DivergenceSignal) -> bool:
-        """Verificar alertas duplicadas con seguridad"""
-        try:
-            alert_key = f"{signal.symbol}_{signal.timeframe}_{signal.type}"
+    """Verificar alertas duplicadas con seguridad"""
+    try:
+        alert_key = f"{signal.symbol}_{signal.timeframe}_{signal.type}"
+        
+        if alert_key in self.sent_alerts:
+            last_alert = self.sent_alerts[alert_key]
+            time_diff = datetime.now() - last_alert.get('timestamp', datetime.min)
             
-            if alert_key in self.sent_alerts:
-                last_alert = self.sent_alerts[alert_key]
-                time_diff = datetime.now() - last_alert.get('timestamp', datetime.min)
-                
-                cooldown_times = {
-                    '2h': 2700,   # 45 minutos
-                    '4h': 3600,   # 1 hora
-                    '6h': 5400,   # 1.5 horas
-                    '12h': 10800, # 3 horas
-                    '1d': 14400   # 4 horas
-                }
-                
-                cooldown = cooldown_times.get(signal.timeframe, 7200)
-                
-                if time_diff.total_seconds() < cooldown:
-                    return True
-                    
-            return False
+            # ✅ COOLDOWNS OPTIMIZADOS CON 2H
+            cooldown_times = {
+                '2h': 2700,   # 45 minutos para 2h (timing agresivo)
+                '4h': 3600,   # 1 hora
+                '6h': 5400,   # 1.5 horas
+                '12h': 10800, # 3 horas
+                '1d': 14400   # 4 horas
+            }
             
-        except Exception as e:
-            logger.error(f"❌ Error verificando duplicados: {e}")
-            return False
+            cooldown = cooldown_times.get(signal.timeframe, 7200)
+            
+            if time_diff.total_seconds() < cooldown:
+                return True
+                
+        return False
+        
+    except Exception as e:
+        logger.error(f"❌ Error verificando duplicados: {e}")
+        return False
 
     async def send_telegram_alert_safe(self, message: str):
         """Enviar alerta por Telegram con manejo de errores"""
@@ -1074,27 +1106,27 @@ async def get_ohlcv_data_safe(self, symbol: str, timeframe: str, limit: int = 10
     # === COMANDOS DE TELEGRAM MEJORADOS ===
     
     async def cmd_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Comando /start con manejo seguro del Markdown"""
-        try:
-            # Verificar estado ML de manera segura
-            ml_status = "❌ INACTIVO"
-            ml_details = ""
-            
-            if SKLEARN_AVAILABLE and self.ml_model is not None:
-                try:
-                    if self.is_ml_ready():
-                        ml_status = "✅ ACTIVO"
-                        pattern_count = len(self.pattern_history)
-                        ml_details = f"\n🧠 Patterns: {pattern_count}"
-                    else:
-                        ml_status = "🔄 INICIALIZANDO"
-                except Exception:
-                    ml_status = "⚠️ ERROR"
-            elif not SKLEARN_AVAILABLE:
-                ml_status = "📦 LIBRERÍA NO DISPONIBLE"
-            
-            # Usar texto simple sin Markdown para evitar errores de parsing
-            message = f"""🚀 Bot RSI Divergence Ultra v3.0 PREMIUM
+    """Comando /start con información de 2h"""
+    try:
+        # Verificar estado ML de manera segura
+        ml_status = "❌ INACTIVO"
+        ml_details = ""
+        
+        if SKLEARN_AVAILABLE and self.ml_model is not None:
+            try:
+                if self.is_ml_ready():
+                    ml_status = "✅ ACTIVO"
+                    pattern_count = len(self.pattern_history)
+                    ml_details = f"\n🧠 Patterns: {pattern_count}"
+                else:
+                    ml_status = "🔄 INICIALIZANDO"
+            except Exception:
+                ml_status = "⚠️ ERROR"
+        elif not SKLEARN_AVAILABLE:
+            ml_status = "📦 LIBRERÍA NO DISPONIBLE"
+        
+        # ✅ MENSAJE ACTUALIZADO CON INFORMACIÓN DE 2H
+        message = f"""🚀 Bot RSI Divergence Ultra v3.0 PREMIUM CON 2H
 
 ✅ Estado: ONLINE
 📊 Pares activos: {len(self.active_pairs)}
@@ -1108,20 +1140,21 @@ async def get_ohlcv_data_safe(self, symbol: str, timeframe: str, limit: int = 10
 /scan_now - Escaneo manual
 /help - Ayuda completa
 
-🎯 Optimizaciones PREMIUM:
-- Timeframe 2h para timing agresivo
-- Umbrales de alta confianza (82-90%)
-- Algoritmo de confianza optimizado
-- ML con compatibilidad de versiones
+🎯 Optimizaciones PREMIUM CON 2H:
+⚡ Timeframe 2h para timing agresivo (45min cooldown)
+🔥 Umbrales de alta confianza (82-90%)
+💎 Algoritmo de confianza optimizado
+🧠 ML con compatibilidad de versiones
+📈 Clasificación: WEAK/MEDIUM/STRONG/VERY_STRONG
 
 💎 Sistema premium funcionando 24/7 en Railway"""
-            
-            # Enviar sin parse_mode para evitar problemas de Markdown
-            await update.message.reply_text(message)
-            
-        except Exception as e:
-            logger.error(f"❌ Error en /start: {e}")
-            await update.message.reply_text("🤖 Bot RSI Divergence Ultra v3.0 PREMIUM ONLINE")
+        
+        # Enviar sin parse_mode para evitar problemas de Markdown
+        await update.message.reply_text(message)
+        
+    except Exception as e:
+        logger.error(f"❌ Error en /start: {e}")
+        await update.message.reply_text("🤖 Bot RSI Divergence Ultra v3.0 PREMIUM CON 2H ONLINE")
 
     async def cmd_status(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Comando /status con información ML"""
@@ -1138,9 +1171,9 @@ async def get_ohlcv_data_safe(self, symbol: str, timeframe: str, limit: int = 10
             else:
                 ml_info = "📦 SKLEARN NO DISPONIBLE"
             
-            message = f"""📊 *Estado Bot RSI Ultra v3.0 PREMIUM*
+            message = f"""📊 *Estado Bot RSI Ultra v3.0*
 
-🔄 *Estado:* ✅ ONLINE (PREMIUM ML)
+🔄 *Estado:* ✅ ONLINE (ML CORREGIDO)
 📈 *Pares monitoreados:* {len(self.active_pairs)}
 🌐 *Total disponibles:* {len(self.all_bybit_pairs)}
 ⏰ *Timeframes:* {', '.join(self.timeframes)}
@@ -1223,7 +1256,7 @@ async def get_ohlcv_data_safe(self, symbol: str, timeframe: str, limit: int = 10
         try:
             if not context.args:
                 await update.message.reply_text(
-                    "📝 **Uso:** `/add SYMBOL`\n\n**Ejemplos:**\n• `/add DOGEUSDT`\n• `/add POPCATUSDT`",
+                    "📝 **Uso:** `/add SYMBOL`\n\n**Ejemplos:**\n• `/add DOGEUSDT`\n• `/add ADAUSDT`",
                     parse_mode=ParseMode.MARKDOWN
                 )
                 return
@@ -1298,36 +1331,36 @@ async def get_ohlcv_data_safe(self, symbol: str, timeframe: str, limit: int = 10
     async def cmd_help(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Comando /help"""
         try:
-            message = """📋 **Ayuda - Bot RSI Ultra v3.0 PREMIUM**
+            message = """📋 **Ayuda - Bot RSI Ultra v3.0 CORREGIDO**
 
 🤖 **¿Qué hace?**
-Detecta divergencias RSI premium en múltiples timeframes:
-• Timeframe 2h para timing agresivo
-• Umbrales de alta confianza (82-90%)
-• Machine Learning avanzado
-• Solo alertas de calidad premium
+Detecta divergencias RSI en múltiples timeframes con:
+• Manejo de errores robusto
+• Machine Learning opcional
+• Rate limiting inteligente
+• Cache optimizado
 
 📊 **Comandos principales:**
 • `/start` - Información inicial
 • `/status` - Estado completo del sistema
 • `/pairs` - Ver pares monitoreados
-• `/add SYMBOL` - Agregar par (ej: /add POPCATUSDT)
+• `/add SYMBOL` - Agregar par (ej: /add DOGEUSDT)
 • `/remove SYMBOL` - Quitar par (ej: /remove APEUSDT)
 • `/scan_now` - Escaneo manual inmediato
 • `/help` - Esta ayuda
 
-🔧 **Características PREMIUM:**
-• ✅ Timeframes: 2h, 4h, 6h, 12h, 1d
-• ✅ Confianza optimizada (82-90%)
-• ✅ Clasificación: WEAK/MEDIUM/STRONG/VERY_STRONG
-• ✅ ML con probabilidades avanzadas
-• ✅ Cache inteligente y rate limiting
-• ✅ Detección temprana de divergencias
+🔧 **Correcciones aplicadas:**
+• ✅ Importaciones condicionales
+• ✅ Manejo de errores robusto
+• ✅ Rate limiting optimizado
+• ✅ Timeframe mapping corregido
+• ✅ Cache inteligente
+• ✅ ML con compatibilidad de versiones
 
 🌐 **Webhook TradingView:**
 `https://tu-dominio.railway.app/webhook/tradingview`
 
-💎 **Sistema premium 24/7 - Solo alertas de alta calidad**"""
+💡 **Sistema ultra robusto funcionando 24/7**"""
             
             await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN)
             
@@ -1375,15 +1408,15 @@ Detecta divergencias RSI premium en múltiples timeframes:
             logger.error(f"❌ Error en limpieza de cache: {e}")
 
     async def start_monitoring_safe(self):
-        """Iniciar monitoreo con manejo de errores robusto"""
-        logger.info("🚀 Iniciando Bot RSI Divergence Ultra v3.0 PREMIUM")
+    """Iniciar monitoreo con mensaje actualizado para 2h"""
+    logger.info("🚀 Iniciando Bot RSI Divergence Ultra v3.0 PREMIUM CON 2H")
+    
+    try:
+        # Configurar Telegram
+        await self.setup_telegram_commands_safe()
         
-        try:
-            # Configurar Telegram
-            await self.setup_telegram_commands_safe()
-            
-            # Mensaje de inicio
-            startup_message = f"""🚀 **Bot RSI Divergence Ultra v3.0 PREMIUM**
+        # ✅ MENSAJE DE INICIO ACTUALIZADO CON 2H
+        startup_message = f"""🚀 **Bot RSI Divergence Ultra v3.0 PREMIUM CON 2H**
 
 🌐 **Plataforma:** Railway EU West
 🛠️ **Versión:** PREMIUM con timeframe 2h y alta confianza
@@ -1391,51 +1424,52 @@ Detecta divergencias RSI premium en múltiples timeframes:
 ⏰ **Timeframes:** {', '.join(self.timeframes)}
 
 ✨ **Mejoras PREMIUM aplicadas:**
-• ✅ Timeframe 2h para timing agresivo
+• ✅ Timeframe 2h para timing agresivo (cooldown 45min)
 • ✅ Umbrales de alta confianza (82-90%)
-• ✅ Algoritmo de confianza optimizado
+• ✅ Algoritmo de confianza optimizado para 2h
 • ✅ Clasificación de fuerza mejorada (WEAK/MEDIUM/STRONG/VERY_STRONG)
 • ✅ ML con compatibilidad de versiones
 • ✅ Cache inteligente y rate limiting
+• ✅ Bonus de confianza específico para 2h
 
-🎯 **Solo alertas de alta calidad - Sistema premium 24/7**
+🎯 **Solo alertas de alta calidad - Sistema premium 24/7 con 2h**
 
 Usa `/help` para ver todos los comandos."""
-            
-            await self.send_telegram_alert_safe(startup_message)
-            
-            # Loop principal con manejo de errores
-            while True:
-                try:
-                    loop_start = time.time()
-                    
-                    # Escaneo principal
-                    await self.scan_all_pairs_safe()
-                    
-                    # Limpieza de cache
-                    await self.smart_cache_cleanup_safe()
-                    
-                    # Estadísticas de rendimiento
-                    loop_duration = time.time() - loop_start
-                    
-                    # Pausa inteligente (10 minutos)
-                    await asyncio.sleep(600)
-                    
-                except Exception as e:
-                    logger.error(f"❌ Error en loop principal: {e}")
-                    logger.error(traceback.format_exc())
-                    # Pausa corta en caso de error
-                    await asyncio.sleep(60)
-                    
-        except Exception as e:
-            logger.error(f"❌ Error crítico en monitoreo: {e}")
-            logger.error(traceback.format_exc())
-            # Reintentar después de un tiempo
-            await asyncio.sleep(300)
+        
+        await self.send_telegram_alert_safe(startup_message)
+        
+        # Loop principal con manejo de errores
+        while True:
+            try:
+                loop_start = time.time()
+                
+                # Escaneo principal
+                await self.scan_all_pairs_safe()
+                
+                # Limpieza de cache
+                await self.smart_cache_cleanup_safe()
+                
+                # Estadísticas de rendimiento
+                loop_duration = time.time() - loop_start
+                
+                # Pausa inteligente (10 minutos)
+                await asyncio.sleep(600)
+                
+            except Exception as e:
+                logger.error(f"❌ Error en loop principal: {e}")
+                logger.error(traceback.format_exc())
+                # Pausa corta en caso de error
+                await asyncio.sleep(60)
+                
+    except Exception as e:
+        logger.error(f"❌ Error crítico en monitoreo: {e}")
+        logger.error(traceback.format_exc())
+        # Reintentar después de un tiempo
+        await asyncio.sleep(300)
 
     def run_safe(self):
         """Punto de entrada ultra seguro"""
-        logger.info("🚀 Iniciando Bot RSI Divergence Ultra v3.0 PREMIUM...")
+        logger.info("🚀 Iniciando Bot RSI Divergence Ultra v3.0 CORREGIDO...")
         
         try:
             # Iniciar Flask en thread separado
@@ -1497,7 +1531,7 @@ def main():
         validate_environment()
         
         # Crear e iniciar bot
-        logger.info("🚀 Iniciando Bot RSI Divergence Ultra v3.0 PREMIUM...")
+        logger.info("🚀 Iniciando Bot RSI Divergence Ultra v3.0 CORREGIDO...")
         bot = RSIDivergenceBot()
         bot.run_safe()
         
