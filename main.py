@@ -54,6 +54,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 @dataclass
+@dataclass
 class DivergenceSignal:
     symbol: str
     timeframe: str
@@ -75,118 +76,118 @@ class DivergenceSignal:
     additional_confirmations: List[str] = field(default_factory=list)
 
 class RSIDivergenceBot:
-    def __init__(self):
-    """Inicializar bot ultra optimizado con manejo de errores robusto"""
-    try:
-        # Configuración desde ENV con valores por defecto
-        self.telegram_token = os.getenv('TELEGRAM_TOKEN')
-        self.chat_id = os.getenv('CHAT_ID')
-        self.bybit_api_key = os.getenv('BYBIT_API_KEY', '')
-        self.bybit_secret = os.getenv('BYBIT_SECRET', '')
-        self.port = int(os.getenv('PORT', 8080))
-        
-        # Validar configuración crítica
-        self._validate_config()
-        
-        # Inicializar componentes básicos
-        self.bot = None
-        self.app = Flask(__name__)
-        self.telegram_app = None
-        
-        # Configurar exchange con manejo de errores
-        self.exchange = self._setup_exchange()
-        
-        # Configurar rutas web
-        self.setup_webhook_routes()
-        
-        # Datos del bot
-        self.all_bybit_pairs = []
-        self.active_pairs = set()
-        self.sent_alerts = {}
-        self.htf_levels = {}
-        self.scan_stats = defaultdict(int)
-        self.performance_metrics = defaultdict(list)
-        
-        # ✅ NUEVA CONFIGURACIÓN CON 2H PARA TIMING AGRESIVO
-        self.timeframes = ['2h', '4h', '6h', '12h', '1d']
-        self.timeframe_weights = {
-            '2h': 0.9,   # Peso específico para 2h (timing agresivo)
-            '4h': 1.0, 
-            '6h': 1.1, 
-            '12h': 1.3, 
-            '1d': 1.5
-        }
-        
-        # ✅ CONFIGURACIÓN RSI ESPECÍFICA PARA CADA TIMEFRAME CON 2H
-        self.rsi_configs = {
-            '2h': {'period': 14, 'smoothing': 3, 'overbought': 70, 'oversold': 30},
-            '4h': {'period': 14, 'smoothing': 3, 'overbought': 70, 'oversold': 30},
-            '6h': {'period': 14, 'smoothing': 3, 'overbought': 72, 'oversold': 28},
-            '12h': {'period': 14, 'smoothing': 2, 'overbought': 75, 'oversold': 25},
-            '1d': {'period': 14, 'smoothing': 1, 'overbought': 75, 'oversold': 25}
-        }
-        
-        # ✅ CONFIGURACIÓN DE DETECCIÓN PREMIUM - ALTA CONFIANZA CON 2H
-        self.detection_configs = {
-            '2h': {
-                'min_peak_distance': 3,
-                'min_price_change': 2.0,      # Movimientos ≥2% para 2h
-                'min_rsi_change': 6.0,        # Divergencias fuertes para 2h
-                'confidence_threshold': 82,    # Solo alertas ≥82% para 2h
-                'volume_threshold': 1.8,
-                'pattern_lookback': 18
-            },
-            '4h': {
-                'min_peak_distance': 3,
-                'min_price_change': 2.5,      # Movimientos significativos
-                'min_rsi_change': 7.0,        # Divergencias claras
-                'confidence_threshold': 84,    # Alta confianza
-                'volume_threshold': 1.9,
-                'pattern_lookback': 20
-            },
-            '6h': {
-                'min_peak_distance': 4,
-                'min_price_change': 3.0,      # Movimientos fuertes
-                'min_rsi_change': 8.0,        # Divergencias robustas
-                'confidence_threshold': 86,    # Muy alta confianza
-                'volume_threshold': 2.0,
-                'pattern_lookback': 25
-            },
-            '12h': {
-                'min_peak_distance': 5,
-                'min_price_change': 3.5,      # Movimientos importantes
-                'min_rsi_change': 9.0,        # Divergencias poderosas
-                'confidence_threshold': 88,    # Confianza premium
-                'volume_threshold': 2.2,
-                'pattern_lookback': 35
-            },
-            '1d': {
-                'min_peak_distance': 5,
-                'min_price_change': 4.5,      # Movimientos mayores
-                'min_rsi_change': 10.0,       # Divergencias fuertes
-                'confidence_threshold': 90,    # Máxima confianza
-                'volume_threshold': 2.3,
-                'pattern_lookback': 40
+    def __init__(self):  # ✅ CORREGIDO: era **init**
+        """Inicializar bot ultra optimizado con manejo de errores robusto"""
+        try:
+            # Configuración desde ENV con valores por defecto
+            self.telegram_token = os.getenv('TELEGRAM_TOKEN')
+            self.chat_id = os.getenv('CHAT_ID')
+            self.bybit_api_key = os.getenv('BYBIT_API_KEY', '')
+            self.bybit_secret = os.getenv('BYBIT_SECRET', '')
+            self.port = int(os.getenv('PORT', 8080))
+            
+            # Validar configuración crítica
+            self._validate_config()
+            
+            # Inicializar componentes básicos
+            self.bot = None
+            self.app = Flask(__name__)
+            self.telegram_app = None
+            
+            # Configurar exchange con manejo de errores
+            self.exchange = self._setup_exchange()
+            
+            # Configurar rutas web
+            self.setup_webhook_routes()
+            
+            # Datos del bot
+            self.all_bybit_pairs = []
+            self.active_pairs = set()
+            self.sent_alerts = {}
+            self.htf_levels = {}
+            self.scan_stats = defaultdict(int)
+            self.performance_metrics = defaultdict(list)
+            
+            # ✅ NUEVA CONFIGURACIÓN CON 2H PARA TIMING AGRESIVO
+            self.timeframes = ['2h', '4h', '6h', '12h', '1d']
+            self.timeframe_weights = {
+                '2h': 0.9,   # Peso específico para 2h (timing agresivo)
+                '4h': 1.0, 
+                '6h': 1.1, 
+                '12h': 1.3, 
+                '1d': 1.5
             }
-        }
-        
-        # Machine Learning (opcional)
-        self.ml_model = None
-        self.scaler = None
-        self.pattern_history = deque(maxlen=1000)
-        
-        # Cache optimizado
-        self.price_data_cache = {}
-        self.cache_expiry = 300  # 5 minutos
-        
-        # Inicialización segura
-        self.initialize_data_safe()
-        
-        logger.info("✅ Bot RSI Divergence Ultra v3.0 con 2h inicializado correctamente")
-        
-    except Exception as e:
-        logger.error(f"❌ Error crítico inicializando bot: {e}")
-        raise
+            
+            # ✅ CONFIGURACIÓN RSI ESPECÍFICA PARA CADA TIMEFRAME CON 2H
+            self.rsi_configs = {
+                '2h': {'period': 14, 'smoothing': 3, 'overbought': 70, 'oversold': 30},
+                '4h': {'period': 14, 'smoothing': 3, 'overbought': 70, 'oversold': 30},
+                '6h': {'period': 14, 'smoothing': 3, 'overbought': 72, 'oversold': 28},
+                '12h': {'period': 14, 'smoothing': 2, 'overbought': 75, 'oversold': 25},
+                '1d': {'period': 14, 'smoothing': 1, 'overbought': 75, 'oversold': 25}
+            }
+            
+            # ✅ CONFIGURACIÓN DE DETECCIÓN PREMIUM - ALTA CONFIANZA CON 2H
+            self.detection_configs = {
+                '2h': {
+                    'min_peak_distance': 3,
+                    'min_price_change': 2.0,      # Movimientos ≥2% para 2h
+                    'min_rsi_change': 6.0,        # Divergencias fuertes para 2h
+                    'confidence_threshold': 82,    # Solo alertas ≥82% para 2h
+                    'volume_threshold': 1.8,
+                    'pattern_lookback': 18
+                },
+                '4h': {
+                    'min_peak_distance': 3,
+                    'min_price_change': 2.5,      # Movimientos significativos
+                    'min_rsi_change': 7.0,        # Divergencias claras
+                    'confidence_threshold': 84,    # Alta confianza
+                    'volume_threshold': 1.9,
+                    'pattern_lookback': 20
+                },
+                '6h': {
+                    'min_peak_distance': 4,
+                    'min_price_change': 3.0,      # Movimientos fuertes
+                    'min_rsi_change': 8.0,        # Divergencias robustas
+                    'confidence_threshold': 86,    # Muy alta confianza
+                    'volume_threshold': 2.0,
+                    'pattern_lookback': 25
+                },
+                '12h': {
+                    'min_peak_distance': 5,
+                    'min_price_change': 3.5,      # Movimientos importantes
+                    'min_rsi_change': 9.0,        # Divergencias poderosas
+                    'confidence_threshold': 88,    # Confianza premium
+                    'volume_threshold': 2.2,
+                    'pattern_lookback': 35
+                },
+                '1d': {
+                    'min_peak_distance': 5,
+                    'min_price_change': 4.5,      # Movimientos mayores
+                    'min_rsi_change': 10.0,       # Divergencias fuertes
+                    'confidence_threshold': 90,    # Máxima confianza
+                    'volume_threshold': 2.3,
+                    'pattern_lookback': 40
+                }
+            }
+            
+            # Machine Learning (opcional)
+            self.ml_model = None
+            self.scaler = None
+            self.pattern_history = deque(maxlen=1000)
+            
+            # Cache optimizado
+            self.price_data_cache = {}
+            self.cache_expiry = 300  # 5 minutos
+            
+            # Inicialización segura
+            self.initialize_data_safe()
+            
+            logger.info("✅ Bot RSI Divergence Ultra v3.0 con 2h inicializado correctamente")
+            
+        except Exception as e:
+            logger.error(f"❌ Error crítico inicializando bot: {e}")
+            raise
 
     def _validate_config(self):
         """Validar configuración crítica con mejor manejo de errores"""
