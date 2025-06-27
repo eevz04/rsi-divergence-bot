@@ -1551,7 +1551,7 @@ def main():
     """Función principal para Railway"""
     try:
         # Validar variables de entorno
-        required_vars = ["TELEGRAM_TOKEN", "CHAT_ID"]
+        required_vars = ["7942375666:AAEK1_p4n0f3MKXS-hfgd563yTOCRDxSqdg", "7471012566"]
         missing_vars = []
 
         for var in required_vars:
