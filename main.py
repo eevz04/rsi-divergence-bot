@@ -24,34 +24,7 @@ import time
 import traceback
 from collections import defaultdict, deque
 
-# Importaciones condicionales para evitar errores
-try:
-    from scipy.signal import find_peaks
-
-    SCIPY_AVAILABLE = True
-except ImportError:
-    SCIPY_AVAILABLE = False
-
-try:
-    import talib
-
-    TALIB_AVAILABLE = True
-except ImportError:
-    TALIB_AVAILABLE = False
-
-try:
-    from sklearn.ensemble import IsolationForest
-    from sklearn.preprocessing import StandardScaler
-
-    SKLEARN_AVAILABLE = True
-except ImportError:
-    SKLEARN_AVAILABLE = False
-
-import warnings
-
-warnings.filterwarnings("ignore")
-
-# Configuración de logging optimizada
+# Configuración optimizada basada en patrones reales
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     level=logging.INFO,
@@ -71,179 +44,147 @@ logger = logging.getLogger(__name__)
 class DivergenceSignal:
     symbol: str
     timeframe: str
-    type: str  # 'bullish', 'bearish', 'hidden_bullish', 'hidden_bearish'
+    type: str  # 'bullish', 'bearish'
     confidence: float
     price_level: float
-    resistance_level: Optional[float] = None
-    volume_spike: bool = False
-    rsi_value: float = 50.0
-    rsi_divergence_strength: float = 0.0
-    price_divergence_strength: float = 0.0
-    volume_confirmation: bool = False
-    trend_alignment: bool = False
-    pattern_strength: str = "medium"  # weak, medium, strong
-    ml_probability: float = 0.0
-    support_resistance_proximity: float = 0.0
-    source: str = "bot_scan"
+    rsi_value: float
+    price_change_percent: float
+    rsi_divergence_strength: float
+    context: str  # 'support', 'resistance', 'neutral'
+    peak_count: int
+    timeframe_confirmations: List[str] = field(default_factory=list)
+    source: str = "realtime_scan"
     timestamp: datetime = field(default_factory=datetime.now)
-    additional_confirmations: List[str] = field(default_factory=list)
 
 
-class RSIDivergenceBot:
+class RSIDivergenceBotV4:
     def __init__(self):
-        """Inicializar bot ultra optimizado con manejo de errores robusto"""
+        """Bot v4.0 - Calibrado con patrones reales exitosos"""
         try:
-            # Configuración desde ENV con valores por defecto
+            # Configuración ENV
             self.telegram_token = os.getenv("TELEGRAM_TOKEN")
             self.chat_id = os.getenv("CHAT_ID")
             self.bybit_api_key = os.getenv("BYBIT_API_KEY", "")
             self.bybit_secret = os.getenv("BYBIT_SECRET", "")
             self.port = int(os.getenv("PORT", 8080))
 
-            # Validar configuración crítica
             self._validate_config()
 
-            # Inicializar componentes básicos
+            # Componentes básicos
             self.bot = None
             self.app = Flask(__name__)
             self.telegram_app = None
-
-            # Configurar exchange con manejo de errores
             self.exchange = self._setup_exchange()
-
-            # Configurar rutas web
             self.setup_webhook_routes()
 
             # Datos del bot
             self.all_bybit_pairs = []
             self.active_pairs = set()
             self.sent_alerts = {}
-            self.htf_levels = {}
             self.scan_stats = defaultdict(int)
-            self.performance_metrics = defaultdict(list)
 
-            # Configuración optimizada CON 2h para mejor timing
-            self.timeframes = ["2h", "4h", "6h", "12h", "1d"]
-            self.timeframe_weights = {
-                "2h": 0.9,
-                "4h": 1.0,
-                "6h": 1.1,
-                "12h": 1.3,
-                "1d": 1.5,
-            }
+            # CONFIGURACIÓN BASADA EN PATRONES REALES EXITOSOS
+            self.timeframes = ["2h", "4h", "6h", "8h", "12h", "1d"]
 
-            # Configuración RSI CON 2h
-            self.rsi_configs = {
-                "2h": {"period": 14, "smoothing": 3, "overbought": 70, "oversold": 30},
-                "4h": {"period": 14, "smoothing": 3, "overbought": 70, "oversold": 30},
-                "6h": {"period": 14, "smoothing": 3, "overbought": 72, "oversold": 28},
-                "12h": {"period": 14, "smoothing": 2, "overbought": 75, "oversold": 25},
-                "1d": {"period": 14, "smoothing": 1, "overbought": 75, "oversold": 25},
-            }
-
-            # Configuración de detección premium - Alta confianza
+            # Parámetros calibrados con tus ejemplos exitosos
             self.detection_configs = {
                 "2h": {
                     "min_peak_distance": 3,
-                    "min_price_change": 2.0,  # Más estricto: movimientos ≥2%
-                    "min_rsi_change": 6.0,  # Divergencias más fuertes
-                    "confidence_threshold": 82,  # Solo alertas ≥82%
-                    "volume_threshold": 1.8,
-                    "pattern_lookback": 18,
+                    "min_price_change": 0.8,  # Más sensible para detección temprana
+                    "min_rsi_change": 3.0,  # RSI divergencia mínima
+                    "confidence_threshold": 60,  # Umbral realista
+                    "lookback_period": 25,
+                    "peak_prominence": 0.5,  # Prominencia de picos
                 },
                 "4h": {
                     "min_peak_distance": 3,
-                    "min_price_change": 2.5,  # Movimientos significativos
-                    "min_rsi_change": 7.0,  # Divergencias claras
-                    "confidence_threshold": 84,  # Alta confianza
-                    "volume_threshold": 1.9,
-                    "pattern_lookback": 20,
+                    "min_price_change": 1.0,
+                    "min_rsi_change": 4.0,
+                    "confidence_threshold": 65,
+                    "lookback_period": 30,
+                    "peak_prominence": 0.6,
                 },
                 "6h": {
+                    "min_peak_distance": 3,
+                    "min_price_change": 1.2,
+                    "min_rsi_change": 4.5,
+                    "confidence_threshold": 68,
+                    "lookback_period": 35,
+                    "peak_prominence": 0.7,
+                },
+                "8h": {
                     "min_peak_distance": 4,
-                    "min_price_change": 3.0,  # Movimientos fuertes
-                    "min_rsi_change": 8.0,  # Divergencias robustas
-                    "confidence_threshold": 86,  # Muy alta confianza
-                    "volume_threshold": 2.0,
-                    "pattern_lookback": 25,
+                    "min_price_change": 1.5,
+                    "min_rsi_change": 5.0,
+                    "confidence_threshold": 70,
+                    "lookback_period": 40,
+                    "peak_prominence": 0.8,
                 },
                 "12h": {
-                    "min_peak_distance": 5,
-                    "min_price_change": 3.5,  # Movimientos importantes
-                    "min_rsi_change": 9.0,  # Divergencias poderosas
-                    "confidence_threshold": 88,  # Confianza premium
-                    "volume_threshold": 2.2,
-                    "pattern_lookback": 35,
+                    "min_peak_distance": 4,
+                    "min_price_change": 1.8,
+                    "min_rsi_change": 6.0,
+                    "confidence_threshold": 72,
+                    "lookback_period": 45,
+                    "peak_prominence": 1.0,
                 },
                 "1d": {
                     "min_peak_distance": 5,
-                    "min_price_change": 4.5,  # Movimientos mayores
-                    "min_rsi_change": 10.0,  # Divergencias fuertes
-                    "confidence_threshold": 90,  # Máxima confianza
-                    "volume_threshold": 2.3,
-                    "pattern_lookback": 40,
+                    "min_price_change": 2.5,
+                    "min_rsi_change": 7.0,
+                    "confidence_threshold": 75,
+                    "lookback_period": 50,
+                    "peak_prominence": 1.2,
                 },
             }
-
-            # Machine Learning (opcional)
-            self.ml_model = None
-            self.scaler = None
-            self.pattern_history = deque(maxlen=1000)
 
             # Cache optimizado
             self.price_data_cache = {}
             self.cache_expiry = 300  # 5 minutos
 
-            # Inicialización segura
+            # Inicialización
             self.initialize_data_safe()
 
-            logger.info("✅ Bot RSI Divergence Ultra v3.0 inicializado correctamente")
+            logger.info("✅ RSI Divergence Bot v4.0 - Calibrado con patrones reales")
 
         except Exception as e:
-            logger.error(f"❌ Error crítico inicializando bot: {e}")
+            logger.error(f"❌ Error inicializando bot v4.0: {e}")
             raise
 
     def _validate_config(self):
-        """Validar configuración crítica con mejor manejo de errores"""
+        """Validar configuración"""
         if not self.telegram_token:
-            raise ValueError("❌ TELEGRAM_TOKEN es requerido")
+            raise ValueError("❌ TELEGRAM_TOKEN requerido")
         if not self.chat_id:
-            raise ValueError("❌ CHAT_ID es requerido")
-
-        # Validar formato del chat_id
+            raise ValueError("❌ CHAT_ID requerido")
         try:
             int(self.chat_id)
         except ValueError:
-            raise ValueError("❌ CHAT_ID debe ser un número")
-
-        logger.info("✅ Configuración validada correctamente")
+            raise ValueError("❌ CHAT_ID debe ser número")
+        logger.info("✅ Configuración validada")
 
     def _setup_exchange(self):
-        """Configurar exchange con manejo de errores robusto"""
+        """Configurar exchange"""
         try:
-            exchange_config = {
+            config = {
                 "enableRateLimit": True,
-                "rateLimit": 200,  # Más conservador
+                "rateLimit": 200,
                 "timeout": 30000,
-                "options": {
-                    "defaultType": "linear",
-                },
+                "options": {"defaultType": "linear"},
                 "sandbox": False,
             }
 
-            # Solo agregar credenciales si están disponibles
             if self.bybit_api_key and self.bybit_secret:
-                exchange_config["apiKey"] = self.bybit_api_key
-                exchange_config["secret"] = self.bybit_secret
-                logger.info("✅ Exchange configurado con credenciales")
+                config["apiKey"] = self.bybit_api_key
+                config["secret"] = self.bybit_secret
+                logger.info("✅ Exchange con credenciales")
             else:
-                logger.warning("⚠️ Exchange configurado sin credenciales (solo lectura)")
+                logger.warning("⚠️ Exchange sin credenciales")
 
-            return ccxt.bybit(exchange_config)
+            return ccxt.bybit(config)
 
         except Exception as e:
             logger.error(f"❌ Error configurando exchange: {e}")
-            # Retornar configuración básica
             return ccxt.bybit(
                 {
                     "enableRateLimit": True,
@@ -254,24 +195,39 @@ class RSIDivergenceBot:
             )
 
     def initialize_data_safe(self):
-        """Inicializar datos con manejo de errores seguro"""
+        """Inicializar datos con pares exitosos"""
         try:
             self.load_all_bybit_pairs_safe()
-            self.load_trending_pairs_safe()
-            self.initialize_ml_model_safe()
-            logger.info(
-                f"✅ Datos inicializados: {len(self.active_pairs)} pares activos"
-            )
+            self.load_successful_pairs()
+            logger.info(f"✅ Datos inicializados: {len(self.active_pairs)} pares")
         except Exception as e:
             logger.error(f"❌ Error inicializando datos: {e}")
-            # Usar configuración de emergencia
-            self.active_pairs = set(["BTCUSDT", "ETHUSDT", "SOLUSDT", "HYPEUSDT"])
-            self.all_bybit_pairs = self.get_fallback_pairs()
+            # Pares de emergencia basados en ejemplos exitosos
+            self.active_pairs = set(
+                [
+                    "1000BONKUSDT",
+                    "CPOOLUSDT",
+                    "1000PEPEUSDT",
+                    "AIOZUSDT",
+                    "FARTCOINUSDT",
+                    "FETUSDT",
+                    "HYPEUSDT",
+                    "INJUSDT",
+                    "KAITOUSDT",
+                    "POPCATUSDT",
+                    "VIRTUALUSDT",
+                    # Agregar otros pares populares
+                    "BTCUSDT",
+                    "ETHUSDT",
+                    "SOLUSDT",
+                    "BNBUSDT",
+                    "XRPUSDT",
+                ]
+            )
 
     def load_all_bybit_pairs_safe(self):
-        """Cargar pares de Bybit con manejo de errores mejorado"""
+        """Cargar pares de Bybit"""
         try:
-            logger.info("🔄 Cargando pares de Bybit...")
             markets = self.exchange.load_markets()
             usdt_pairs = []
 
@@ -284,170 +240,108 @@ class RSIDivergenceBot:
                         and market.get("active", True)
                     ):
                         usdt_pairs.append(symbol)
-                except Exception as e:
-                    logger.debug(f"Error procesando {symbol}: {e}")
+                except:
                     continue
 
             self.all_bybit_pairs = sorted(usdt_pairs)
-            logger.info(f"✅ Cargados {len(self.all_bybit_pairs)} pares de Bybit")
+            logger.info(f"✅ {len(self.all_bybit_pairs)} pares cargados")
 
         except Exception as e:
-            logger.error(f"❌ Error cargando pares de Bybit: {e}")
+            logger.error(f"❌ Error cargando pares: {e}")
             self.all_bybit_pairs = self.get_fallback_pairs()
-            logger.info(f"✅ Usando pares de respaldo: {len(self.all_bybit_pairs)}")
 
-    def get_fallback_pairs(self):
-        """Pares de respaldo actualizados"""
-        return [
-            # Majors
+    def load_successful_pairs(self):
+        """Cargar pares con patrones exitosos + otros populares"""
+        # Pares con patrones exitosos confirmados
+        successful_pairs = [
+            "1000BONKUSDT",
+            "CPOOLUSDT",
+            "1000PEPEUSDT",
+            "AIOZUSDT",
+            "FARTCOINUSDT",
+            "FETUSDT",
+            "HYPEUSDT",
+            "INJUSDT",
+            "KAITOUSDT",
+            "POPCATUSDT",
+            "VIRTUALUSDT",
+        ]
+
+        # Pares populares adicionales
+        popular_pairs = [
             "BTCUSDT",
             "ETHUSDT",
+            "SOLUSDT",
             "BNBUSDT",
             "XRPUSDT",
             "ADAUSDT",
-            "SOLUSDT",
             "AVAXUSDT",
             "DOTUSDT",
             "LINKUSDT",
             "LTCUSDT",
-            "BCHUSDT",
-            # Trending 2025
-            "HYPEUSDT",
-            "MOVEUSDT",
-            "PENGUUSDT",
-            "VIRTUALUSDT",
-            # Memes populares
             "DOGEUSDT",
             "SHIBUSDT",
-            "PEPEUSDT",
             "WIFUSDT",
             "FLOKIUSDT",
-            "BONKUSDT",
-            # L1/L2
             "MATICUSDT",
             "OPUSDT",
             "ARBUSDT",
             "SUIUSDT",
             "APTUSDT",
-            "NEARUSDT",
-            # DeFi
-            "UNIUSDT",
-            "AAVEUSDT",
-            "CRVUSDT",
         ]
 
-    def load_trending_pairs_safe(self):
-        """Cargar pares trending con seguridad MEJORADA"""
-        try:
-            # Pares básicos que SIEMPRE deben cargarse
-            essential_pairs = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"]
+        all_target_pairs = successful_pairs + popular_pairs
 
-            # Pares trending 2025
-            trending_pairs = ["HYPEUSDT", "MOVEUSDT", "PENGUUSDT", "VIRTUALUSDT"]
-
-            # Memes populares
-            meme_pairs = ["DOGEUSDT", "SHIBUSDT", "PEPEUSDT", "WIFUSDT"]
-
-            # Combinar todas las listas
-            all_target_pairs = essential_pairs + trending_pairs + meme_pairs
-
-            # FORZAR carga - incluso si all_bybit_pairs está vacío
-            pairs_added = 0
-            for pair in all_target_pairs:
-                try:
-                    # Si all_bybit_pairs está vacío O el par existe, agregarlo
-                    if not self.all_bybit_pairs or pair in self.all_bybit_pairs:
-                        self.active_pairs.add(pair)
-                        pairs_added += 1
-                        logger.info(f"✅ Par agregado: {pair}")
-                except Exception as e:
-                    logger.error(f"❌ Error agregando {pair}: {e}")
-                    # Agregar de todas formas si es un par esencial
-                    if pair in essential_pairs:
-                        self.active_pairs.add(pair)
-                        pairs_added += 1
-                        logger.info(f"🔧 Par esencial forzado: {pair}")
-
-            logger.info(
-                f"✅ Total pares cargados: {len(self.active_pairs)} ({pairs_added} agregados)"
-            )
-
-            # Si aún no hay pares, forzar los básicos
-            if len(self.active_pairs) == 0:
-                logger.warning("⚠️ No se cargaron pares, forzando básicos...")
-                for pair in essential_pairs:
-                    self.active_pairs.add(pair)
-                logger.info(f"🔧 Pares básicos forzados: {len(self.active_pairs)}")
-
-        except Exception as e:
-            logger.error(f"❌ Error en load_trending_pairs_safe: {e}")
-            # Emergencia: cargar pares básicos directamente
-            emergency_pairs = ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
-            for pair in emergency_pairs:
+        for pair in all_target_pairs:
+            if not self.all_bybit_pairs or pair in self.all_bybit_pairs:
                 self.active_pairs.add(pair)
-            logger.info(f"🚨 Pares de emergencia cargados: {len(self.active_pairs)}")
 
-    def initialize_ml_model_safe(self):
-        """Inicializar ML con manejo de errores y compatibilidad de versiones"""
-        try:
-            if SKLEARN_AVAILABLE:
-                self.scaler = StandardScaler()
-                self.ml_model = IsolationForest(
-                    contamination=0.1,
-                    random_state=42,
-                    n_estimators=50,  # Reducido para Railway
-                    max_samples="auto",
-                    bootstrap=False,
-                )
+        logger.info(f"✅ {len(self.active_pairs)} pares activos cargados")
 
-                # Entrenar con datos dummy para inicializar el modelo
-                dummy_data = np.random.randn(100, 5)  # 100 samples, 5 features
-                try:
-                    self.ml_model.fit(dummy_data)
-                    logger.info("✅ Modelo ML inicializado y entrenado")
-                except Exception as e:
-                    logger.warning(f"⚠️ Error entrenando modelo inicial: {e}")
-                    self.ml_model = None
-                    self.scaler = None
-            else:
-                logger.warning("⚠️ scikit-learn no disponible, ML deshabilitado")
-                self.ml_model = None
-                self.scaler = None
-        except Exception as e:
-            logger.error(f"❌ Error inicializando ML: {e}")
-            self.ml_model = None
-            self.scaler = None
+    def get_fallback_pairs(self):
+        """Pares de respaldo"""
+        return [
+            "1000BONKUSDT",
+            "CPOOLUSDT",
+            "1000PEPEUSDT",
+            "AIOZUSDT",
+            "FARTCOINUSDT",
+            "FETUSDT",
+            "HYPEUSDT",
+            "INJUSDT",
+            "KAITOUSDT",
+            "POPCATUSDT",
+            "VIRTUALUSDT",
+            "BTCUSDT",
+            "ETHUSDT",
+            "SOLUSDT",
+            "BNBUSDT",
+            "XRPUSDT",
+            "DOGEUSDT",
+            "SHIBUSDT",
+            "ADAUSDT",
+            "AVAXUSDT",
+            "DOTUSDT",
+        ]
 
     def setup_webhook_routes(self):
-        """Configurar rutas Flask optimizadas"""
+        """Rutas Flask"""
 
         @self.app.route("/", methods=["GET"])
         def home():
-            try:
-                return jsonify(
-                    {
-                        "status": "🚀 RSI Divergence Bot v3.0 ULTRA",
-                        "version": "3.0-FIXED",
-                        "active_pairs": len(self.active_pairs),
-                        "total_pairs": len(self.all_bybit_pairs),
-                        "uptime": datetime.now().isoformat(),
-                        "ml_enabled": self.ml_model is not None,
-                        "stats": dict(self.scan_stats),
-                    }
-                )
-            except Exception as e:
-                return jsonify({"error": str(e)}), 500
-
-        @self.app.route("/webhook/tradingview", methods=["POST"])
-        def tradingview_webhook():
-            try:
-                return self.process_tradingview_alert()
-            except Exception as e:
-                logger.error(f"❌ Error en webhook: {e}")
-                return jsonify({"error": str(e)}), 500
+            return jsonify(
+                {
+                    "status": "🚀 RSI Divergence Bot v4.0 - Patrones Reales",
+                    "version": "4.0-REALTIME",
+                    "active_pairs": len(self.active_pairs),
+                    "total_pairs": len(self.all_bybit_pairs),
+                    "uptime": datetime.now().isoformat(),
+                    "stats": dict(self.scan_stats),
+                }
+            )
 
         @self.app.route("/health", methods=["GET"])
-        def health_check():
+        def health():
             return jsonify(
                 {
                     "status": "healthy",
@@ -459,9 +353,8 @@ class RSIDivergenceBot:
     async def get_ohlcv_data_safe(
         self, symbol: str, timeframe: str, limit: int = 100
     ) -> pd.DataFrame:
-        """Obtener datos OHLCV con manejo de errores robusto"""
+        """Obtener datos OHLCV con cache"""
         try:
-            # Cache key
             cache_key = f"{symbol}_{timeframe}_{limit}"
             now = time.time()
 
@@ -473,34 +366,10 @@ class RSIDivergenceBot:
             ):
                 return self.price_data_cache[cache_key]["data"].copy()
 
-            # Mapeo correcto de timeframes CON 2h
-            timeframe_map = {
-                "2h": "2h",
-                "4h": "4h",
-                "6h": "6h",
-                "12h": "12h",
-                "1d": "1d",
-                "1D": "1d",
-            }
+            # Obtener datos
+            ohlcv = self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
 
-            bybit_timeframe = timeframe_map.get(timeframe, timeframe)
-
-            # Obtener datos con retry
-            max_retries = 3
-            for attempt in range(max_retries):
-                try:
-                    ohlcv = self.exchange.fetch_ohlcv(
-                        symbol, bybit_timeframe, limit=limit
-                    )
-                    break
-                except Exception as e:
-                    if attempt == max_retries - 1:
-                        raise e
-                    await asyncio.sleep(1)
-                    continue
-
-            if not ohlcv or len(ohlcv) < 20:
-                logger.warning(f"⚠️ Datos insuficientes para {symbol} {timeframe}")
+            if not ohlcv or len(ohlcv) < 30:
                 return pd.DataFrame()
 
             df = pd.DataFrame(
@@ -509,9 +378,7 @@ class RSIDivergenceBot:
             df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
             df.set_index("timestamp", inplace=True)
 
-            # Validar datos
             if df.isnull().any().any():
-                logger.warning(f"⚠️ Datos con valores nulos en {symbol}")
                 df = df.dropna()
 
             # Guardar en cache
@@ -523,42 +390,19 @@ class RSIDivergenceBot:
             logger.error(f"❌ Error obteniendo datos {symbol} {timeframe}: {e}")
             return pd.DataFrame()
 
-    def calculate_rsi_safe(self, close_prices: np.array, period: int = 14) -> np.array:
-        """Calcular RSI con manejo de errores seguro"""
+    def calculate_rsi(self, close_prices: np.array, period: int = 14) -> np.array:
+        """Calcular RSI optimizado"""
         try:
             if len(close_prices) < period + 10:
                 return np.full(len(close_prices), np.nan)
 
-            # Usar TA-Lib si está disponible
-            if TALIB_AVAILABLE:
-                try:
-                    rsi = talib.RSI(close_prices.astype(float), timeperiod=period)
-                    return rsi
-                except Exception:
-                    pass
-
-            # Método manual como fallback
-            return self.calculate_rsi_manual(close_prices, period)
-
-        except Exception as e:
-            logger.error(f"❌ Error calculando RSI: {e}")
-            return np.full(len(close_prices), 50.0)
-
-    def calculate_rsi_manual(
-        self, close_prices: np.array, period: int = 14
-    ) -> np.array:
-        """RSI manual optimizado"""
-        if len(close_prices) < period + 1:
-            return np.full(len(close_prices), np.nan)
-
-        try:
             deltas = np.diff(close_prices)
             gains = np.where(deltas > 0, deltas, 0)
             losses = np.where(deltas < 0, -deltas, 0)
 
             rsi_values = np.full(len(close_prices), np.nan)
 
-            # Calcular primeros valores
+            # Calcular RSI
             avg_gain = np.mean(gains[:period])
             avg_loss = np.mean(losses[:period])
 
@@ -583,119 +427,95 @@ class RSIDivergenceBot:
             return rsi_values
 
         except Exception as e:
-            logger.error(f"❌ Error en RSI manual: {e}")
+            logger.error(f"❌ Error calculando RSI: {e}")
             return np.full(len(close_prices), 50.0)
 
-    def find_peaks_safe(
-        self, data: np.array, min_distance: int = 5
+    def find_peaks_and_troughs(
+        self, data: np.array, distance: int = 3, prominence: float = 0.5
     ) -> Tuple[List[int], List[int]]:
-        """Encontrar picos con manejo de errores"""
+        """Encontrar picos y valles mejorado"""
         try:
-            if len(data) < min_distance * 3:
+            if len(data) < distance * 3:
                 return [], []
 
-            # Usar scipy si está disponible
-            if SCIPY_AVAILABLE:
-                try:
-                    peaks, _ = find_peaks(data, distance=min_distance)
-                    troughs, _ = find_peaks(-data, distance=min_distance)
-                    return peaks.tolist(), troughs.tolist()
-                except Exception:
-                    pass
+            peaks = []
+            troughs = []
 
-            # Método manual
-            return self.find_peaks_manual(data, min_distance)
+            # Encontrar picos locales
+            for i in range(distance, len(data) - distance):
+                # Es pico si es mayor que sus vecinos
+                is_peak = all(
+                    data[i] >= data[i - j] for j in range(1, distance + 1)
+                ) and all(data[i] >= data[i + j] for j in range(1, distance + 1))
+
+                # Es valle si es menor que sus vecinos
+                is_trough = all(
+                    data[i] <= data[i - j] for j in range(1, distance + 1)
+                ) and all(data[i] <= data[i + j] for j in range(1, distance + 1))
+
+                # Verificar prominencia
+                if is_peak:
+                    left_min = np.min(data[max(0, i - distance * 2) : i])
+                    right_min = np.min(data[i : min(len(data), i + distance * 2)])
+                    if data[i] - max(left_min, right_min) >= prominence:
+                        peaks.append(i)
+
+                if is_trough:
+                    left_max = np.max(data[max(0, i - distance * 2) : i])
+                    right_max = np.max(data[i : min(len(data), i + distance * 2)])
+                    if min(left_max, right_max) - data[i] >= prominence:
+                        troughs.append(i)
+
+            return peaks, troughs
 
         except Exception as e:
             logger.error(f"❌ Error encontrando picos: {e}")
             return [], []
 
-    def find_peaks_manual(
-        self, data: np.array, min_distance: int = 5
-    ) -> Tuple[List[int], List[int]]:
-        """Método manual para encontrar picos"""
-        peaks = []
-        troughs = []
-
+    def detect_support_resistance(self, price_data: pd.DataFrame) -> Dict[str, float]:
+        """Detectar niveles de soporte y resistencia"""
         try:
-            for i in range(min_distance, len(data) - min_distance):
-                # Picos
-                if all(
-                    data[i] >= data[i - j] for j in range(1, min_distance + 1)
-                ) and all(data[i] >= data[i + j] for j in range(1, min_distance + 1)):
-                    peaks.append(i)
+            highs = price_data["high"].values
+            lows = price_data["low"].values
+            closes = price_data["close"].values
 
-                # Valles
-                if all(
-                    data[i] <= data[i - j] for j in range(1, min_distance + 1)
-                ) and all(data[i] <= data[i + j] for j in range(1, min_distance + 1)):
-                    troughs.append(i)
+            # Niveles recientes
+            recent_high = np.max(highs[-20:])
+            recent_low = np.min(lows[-20:])
+            current_price = closes[-1]
 
-            return peaks, troughs
+            # Determinar contexto
+            resistance_distance = abs(current_price - recent_high) / current_price * 100
+            support_distance = abs(current_price - recent_low) / current_price * 100
+
+            context = "neutral"
+            if support_distance <= 2.0:  # Cerca del soporte (2%)
+                context = "support"
+            elif resistance_distance <= 2.0:  # Cerca de resistencia (2%)
+                context = "resistance"
+
+            return {
+                "resistance": recent_high,
+                "support": recent_low,
+                "context": context,
+                "resistance_distance": resistance_distance,
+                "support_distance": support_distance,
+            }
 
         except Exception as e:
-            logger.error(f"❌ Error en find_peaks_manual: {e}")
-            return [], []
+            logger.error(f"❌ Error detectando S/R: {e}")
+            return {
+                "resistance": 0,
+                "support": 0,
+                "context": "neutral",
+                "resistance_distance": 999,
+                "support_distance": 999,
+            }
 
-    def is_ml_ready(self) -> bool:
-        """Verificar si ML está listo de manera segura"""
-        try:
-            if self.ml_model is None:
-                return False
-
-            # Verificar diferentes atributos según la versión
-            return (
-                hasattr(self.ml_model, "offset_")
-                or hasattr(self.ml_model, "_fitted")
-                or hasattr(self.ml_model, "n_features_in_")
-            )
-        except Exception:
-            return False
-
-    def calculate_ml_probability_safe(self, signal: DivergenceSignal) -> float:
-        """Calcular probabilidad ML con seguridad"""
-        try:
-            if not self.is_ml_ready():
-                return 0.0
-
-            # Crear features del signal
-            features = np.array(
-                [
-                    [
-                        signal.confidence,
-                        signal.rsi_value,
-                        signal.rsi_divergence_strength,
-                        signal.price_divergence_strength,
-                        self.timeframe_weights.get(signal.timeframe, 1.0),
-                    ]
-                ]
-            )
-
-            # Normalizar si hay scaler
-            if self.scaler is not None:
-                try:
-                    features = self.scaler.transform(features)
-                except Exception:
-                    pass  # Usar features sin normalizar
-
-            # Predecir
-            try:
-                anomaly_score = self.ml_model.decision_function(features)[0]
-                # Convertir a probabilidad (0-1)
-                probability = max(0.0, min(1.0, (anomaly_score + 0.5) / 1.0))
-                return probability * 100  # Retornar como porcentaje
-            except Exception as e:
-                logger.debug(f"Error en predicción ML: {e}")
-                return 0.0
-
-        except Exception as e:
-            logger.error(f"❌ Error en ML probability: {e}")
-            return 0.0
-
-    def detect_divergence_safe(
+    def detect_divergence_realtime(
         self, price_data: pd.DataFrame, timeframe: str
     ) -> Optional[DivergenceSignal]:
-        """Detectar divergencias con ML mejorado"""
+        """Detectar divergencias en tiempo real - ALGORITMO PRINCIPAL"""
         try:
             if len(price_data) < 30:
                 return None
@@ -704,45 +524,41 @@ class RSIDivergenceBot:
             config = self.detection_configs.get(timeframe, self.detection_configs["1d"])
 
             # Calcular RSI
-            rsi = self.calculate_rsi_safe(closes, period=14)
-
+            rsi = self.calculate_rsi(closes, period=14)
             if len(rsi) < 20 or np.isnan(rsi[-1]):
                 return None
 
-            # Encontrar picos
-            price_peaks, price_troughs = self.find_peaks_safe(
-                closes, config["min_peak_distance"]
+            # Encontrar picos y valles
+            price_peaks, price_troughs = self.find_peaks_and_troughs(
+                closes, config["min_peak_distance"], config["peak_prominence"]
             )
-            rsi_peaks, rsi_troughs = self.find_peaks_safe(
-                rsi, config["min_peak_distance"]
-            )
-
-            # Detectar divergencia bajista
-            signal = self.detect_bearish_divergence_safe(
-                closes, rsi, price_peaks, rsi_peaks, config, timeframe
+            rsi_peaks, rsi_troughs = self.find_peaks_and_troughs(
+                rsi, config["min_peak_distance"], config["peak_prominence"] * 2
             )
 
-            if not signal:
-                # Detectar divergencia alcista
-                signal = self.detect_bullish_divergence_safe(
-                    closes, rsi, price_troughs, rsi_troughs, config, timeframe
-                )
+            # Detectar soporte/resistencia
+            sr_data = self.detect_support_resistance(price_data)
 
-            # Agregar probabilidad ML si está disponible
-            if signal and self.is_ml_ready():
-                try:
-                    signal.ml_probability = self.calculate_ml_probability_safe(signal)
-                except Exception as e:
-                    logger.debug(f"Error agregando ML probability: {e}")
-                    signal.ml_probability = 0.0
+            # Detectar divergencia bajista (precio HH, RSI LH)
+            bearish_signal = self.detect_bearish_divergence_realtime(
+                closes, rsi, price_peaks, rsi_peaks, config, timeframe, sr_data
+            )
 
-            return signal
+            if bearish_signal:
+                return bearish_signal
+
+            # Detectar divergencia alcista (precio LL, RSI HL)
+            bullish_signal = self.detect_bullish_divergence_realtime(
+                closes, rsi, price_troughs, rsi_troughs, config, timeframe, sr_data
+            )
+
+            return bullish_signal
 
         except Exception as e:
             logger.error(f"❌ Error detectando divergencias: {e}")
             return None
 
-    def detect_bearish_divergence_safe(
+    def detect_bearish_divergence_realtime(
         self,
         closes: np.array,
         rsi: np.array,
@@ -750,64 +566,72 @@ class RSIDivergenceBot:
         rsi_peaks: List[int],
         config: dict,
         timeframe: str,
+        sr_data: dict,
     ) -> Optional[DivergenceSignal]:
-        """Detectar divergencia bajista con seguridad"""
+        """Detectar divergencia bajista en tiempo real"""
         try:
             if len(price_peaks) < 2 or len(rsi_peaks) < 2:
                 return None
 
-            # Obtener últimos picos
-            recent_price_peaks = [
-                p for p in price_peaks if p >= len(closes) - config["pattern_lookback"]
-            ]
-            recent_rsi_peaks = [
-                p for p in rsi_peaks if p >= len(rsi) - config["pattern_lookback"]
-            ]
+            # Obtener picos recientes dentro del lookback
+            lookback = config["lookback_period"]
+            recent_price_peaks = [p for p in price_peaks if p >= len(closes) - lookback]
+            recent_rsi_peaks = [p for p in rsi_peaks if p >= len(rsi) - lookback]
 
             if len(recent_price_peaks) < 2 or len(recent_rsi_peaks) < 2:
                 return None
 
+            # Comparar últimos dos picos
             p1, p2 = recent_price_peaks[-2:]
             r1, r2 = recent_rsi_peaks[-2:]
 
-            # Verificar divergencia
+            # Verificar divergencia: precio hace HH, RSI hace LH
             price_higher = closes[p2] > closes[p1]
             rsi_lower = rsi[r2] < rsi[r1]
+
+            if not (price_higher and rsi_lower):
+                return None
+
+            # Calcular métricas
             price_change = (closes[p2] - closes[p1]) / closes[p1] * 100
-            rsi_change = abs(rsi[r1] - rsi[r2])
+            rsi_change = rsi[r1] - rsi[r2]  # Diferencia positiva
 
+            # Verificar umbrales mínimos
             if (
-                price_higher
-                and rsi_lower
-                and price_change >= config["min_price_change"]
-                and rsi_change >= config["min_rsi_change"]
+                price_change < config["min_price_change"]
+                or rsi_change < config["min_rsi_change"]
             ):
+                return None
 
-                confidence = self.calculate_confidence_safe(
-                    price_change, rsi_change, timeframe
-                )
+            # Calcular confianza
+            confidence = self.calculate_confidence_realtime(
+                price_change, rsi_change, timeframe, "bearish", sr_data
+            )
 
-                if confidence >= config["confidence_threshold"]:
-                    return DivergenceSignal(
-                        symbol="",
-                        timeframe=timeframe,
-                        type="bearish",
-                        confidence=confidence,
-                        price_level=closes[-1],
-                        resistance_level=closes[p2],
-                        rsi_value=rsi[-1],
-                        rsi_divergence_strength=rsi_change,
-                        price_divergence_strength=price_change,
-                        pattern_strength=self.classify_pattern_strength(confidence),
-                    )
+            if confidence < config["confidence_threshold"]:
+                return None
 
-            return None
+            # Crear señal
+            signal = DivergenceSignal(
+                symbol="",  # Se llenará después
+                timeframe=timeframe,
+                type="bearish",
+                confidence=confidence,
+                price_level=closes[-1],
+                rsi_value=rsi[-1],
+                price_change_percent=price_change,
+                rsi_divergence_strength=rsi_change,
+                context=sr_data["context"],
+                peak_count=len(recent_price_peaks),
+            )
+
+            return signal
 
         except Exception as e:
             logger.error(f"❌ Error en divergencia bajista: {e}")
             return None
 
-    def detect_bullish_divergence_safe(
+    def detect_bullish_divergence_realtime(
         self,
         closes: np.array,
         rsi: np.array,
@@ -815,142 +639,238 @@ class RSIDivergenceBot:
         rsi_troughs: List[int],
         config: dict,
         timeframe: str,
+        sr_data: dict,
     ) -> Optional[DivergenceSignal]:
-        """Detectar divergencia alcista con seguridad"""
+        """Detectar divergencia alcista en tiempo real"""
         try:
             if len(price_troughs) < 2 or len(rsi_troughs) < 2:
                 return None
 
+            # Obtener valles recientes
+            lookback = config["lookback_period"]
             recent_price_troughs = [
-                t
-                for t in price_troughs
-                if t >= len(closes) - config["pattern_lookback"]
+                t for t in price_troughs if t >= len(closes) - lookback
             ]
-            recent_rsi_troughs = [
-                t for t in rsi_troughs if t >= len(rsi) - config["pattern_lookback"]
-            ]
+            recent_rsi_troughs = [t for t in rsi_troughs if t >= len(rsi) - lookback]
 
             if len(recent_price_troughs) < 2 or len(recent_rsi_troughs) < 2:
                 return None
 
+            # Comparar últimos dos valles
             t1, t2 = recent_price_troughs[-2:]
             r1, r2 = recent_rsi_troughs[-2:]
 
-            # Verificar divergencia
+            # Verificar divergencia: precio hace LL, RSI hace HL
             price_lower = closes[t2] < closes[t1]
             rsi_higher = rsi[r2] > rsi[r1]
+
+            if not (price_lower and rsi_higher):
+                return None
+
+            # Calcular métricas
             price_change = abs(closes[t2] - closes[t1]) / closes[t1] * 100
-            rsi_change = rsi[r2] - rsi[r1]
+            rsi_change = rsi[r2] - rsi[r1]  # Diferencia positiva
 
+            # Verificar umbrales
             if (
-                price_lower
-                and rsi_higher
-                and price_change >= config["min_price_change"]
-                and rsi_change >= config["min_rsi_change"]
+                price_change < config["min_price_change"]
+                or rsi_change < config["min_rsi_change"]
             ):
+                return None
 
-                confidence = self.calculate_confidence_safe(
-                    price_change, rsi_change, timeframe
-                )
+            # Calcular confianza
+            confidence = self.calculate_confidence_realtime(
+                price_change, rsi_change, timeframe, "bullish", sr_data
+            )
 
-                if confidence >= config["confidence_threshold"]:
-                    return DivergenceSignal(
-                        symbol="",
-                        timeframe=timeframe,
-                        type="bullish",
-                        confidence=confidence,
-                        price_level=closes[-1],
-                        resistance_level=closes[t1],
-                        rsi_value=rsi[-1],
-                        rsi_divergence_strength=rsi_change,
-                        price_divergence_strength=price_change,
-                        pattern_strength=self.classify_pattern_strength(confidence),
-                    )
+            if confidence < config["confidence_threshold"]:
+                return None
 
-            return None
+            # Crear señal
+            signal = DivergenceSignal(
+                symbol="",
+                timeframe=timeframe,
+                type="bullish",
+                confidence=confidence,
+                price_level=closes[-1],
+                rsi_value=rsi[-1],
+                price_change_percent=price_change,
+                rsi_divergence_strength=rsi_change,
+                context=sr_data["context"],
+                peak_count=len(recent_price_troughs),
+            )
+
+            return signal
 
         except Exception as e:
             logger.error(f"❌ Error en divergencia alcista: {e}")
             return None
 
-    def calculate_confidence_safe(
-        self, price_change: float, rsi_change: float, timeframe: str
+    def calculate_confidence_realtime(
+        self,
+        price_change: float,
+        rsi_change: float,
+        timeframe: str,
+        div_type: str,
+        sr_data: dict,
     ) -> float:
-        """Calcular confianza optimizada para valores más altos"""
+        """Calcular confianza basada en patrones reales"""
         try:
-            base_confidence = 55.0  # Base más alta
+            # Base de confianza según timeframe
+            base_confidence = {
+                "2h": 60,
+                "4h": 65,
+                "6h": 68,
+                "8h": 70,
+                "12h": 72,
+                "1d": 75,
+            }.get(timeframe, 65)
 
-            # Factores mejorados:
-            price_factor = min(price_change * 2.5, 25)  # Mayor peso al precio
-            rsi_factor = min(rsi_change * 2.0, 20)  # Mayor peso al RSI
-            tf_factor = self.timeframe_weights.get(timeframe, 1.0) * 6  # Mayor peso TF
+            # Factores de ajuste
+            price_factor = min(price_change * 1.5, 15)  # Hasta +15
+            rsi_factor = min(rsi_change * 1.2, 12)  # Hasta +12
 
-            # Bonificación por fuerza combinada:
-            combined_strength = (price_change * rsi_change) / 10
-            strength_bonus = min(combined_strength, 10)
+            # Bonificación por contexto (soporte/resistencia)
+            context_bonus = 0
+            if div_type == "bullish" and sr_data["context"] == "support":
+                context_bonus = 8  # Divergencia alcista en soporte = +8%
+            elif div_type == "bearish" and sr_data["context"] == "resistance":
+                context_bonus = 8  # Divergencia bajista en resistencia = +8%
+
+            # Bonificación por timeframe largo
+            tf_bonus = {"12h": 3, "1d": 5}.get(timeframe, 0)
+
+            # Fuerza combinada
+            combined_strength = (price_change * rsi_change) / 15
+            strength_bonus = min(combined_strength, 8)
 
             confidence = (
-                base_confidence + price_factor + rsi_factor + tf_factor + strength_bonus
+                base_confidence
+                + price_factor
+                + rsi_factor
+                + context_bonus
+                + tf_bonus
+                + strength_bonus
             )
-            return min(confidence, 98.0)  # Máximo 98%
+
+            return min(confidence, 98.0)
 
         except Exception as e:
             logger.error(f"❌ Error calculando confianza: {e}")
-            return 85.0  # Default alto
+            return 65.0
 
-    def classify_pattern_strength(self, confidence: float) -> str:
-        """Clasificar fuerza con umbrales más altos"""
-        if confidence >= 95:
-            return "VERY_STRONG"
-        elif confidence >= 90:
-            return "STRONG"
-        elif confidence >= 85:
-            return "MEDIUM"
-        else:
-            return "WEAK"
+    def check_multiple_timeframes(
+        self, symbol: str, main_signal: DivergenceSignal
+    ) -> List[str]:
+        """Verificar confirmaciones en múltiples timeframes"""
+        confirmations = []
 
-    async def format_alert_message_safe(self, signal: DivergenceSignal) -> str:
-        """Formatear mensaje de alerta con información ML"""
         try:
-            confidence_emoji = (
-                "🔥"
-                if signal.confidence >= 90
-                else "⚡" if signal.confidence >= 85 else "🟠"
-            )
-            type_emoji = "📈🟢" if "bullish" in signal.type else "📉🔴"
+            # Timeframes a verificar según el principal
+            tf_groups = {
+                "2h": ["4h"],
+                "4h": ["6h", "8h"],
+                "6h": ["12h"],
+                "8h": ["12h"],
+                "12h": ["1d"],
+                "1d": [],
+            }
 
-            # Información ML si está disponible
-            ml_info = ""
-            if signal.ml_probability > 0:
-                ml_emoji = "🧠" if signal.ml_probability >= 70 else "🤖"
-                ml_info = (
-                    f"\n{ml_emoji} **ML Probability:** {signal.ml_probability:.1f}%"
+            check_timeframes = tf_groups.get(main_signal.timeframe, [])
+
+            for tf in check_timeframes:
+                try:
+                    # Obtener datos del timeframe
+                    data = asyncio.run(self.get_ohlcv_data_safe(symbol, tf, limit=80))
+                    if data.empty:
+                        continue
+
+                    # Detectar divergencia
+                    signal = self.detect_divergence_realtime(data, tf)
+                    if signal and signal.type == main_signal.type:
+                        confirmations.append(tf)
+
+                except Exception as e:
+                    logger.debug(f"Error verificando {tf}: {e}")
+                    continue
+
+        except Exception as e:
+            logger.error(f"❌ Error verificando múltiples TF: {e}")
+
+        return confirmations
+
+    async def format_alert_message_realtime(self, signal: DivergenceSignal) -> str:
+        """Formatear mensaje de alerta optimizado"""
+        try:
+            # Emojis según tipo y confianza
+            if signal.type == "bullish":
+                main_emoji = "🚀" if signal.confidence >= 75 else "📈"
+                type_emoji = "🟢"
+                direction = "ALCISTA"
+            else:
+                main_emoji = "🔥" if signal.confidence >= 75 else "📉"
+                type_emoji = "🔴"
+                direction = "BAJISTA"
+
+            confidence_emoji = (
+                "⭐"
+                if signal.confidence >= 80
+                else "✨" if signal.confidence >= 70 else "💫"
+            )
+
+            # Contexto
+            context_info = ""
+            if signal.context == "support":
+                context_info = "🛡️ **En SOPORTE** - Alta probabilidad rebote"
+            elif signal.context == "resistance":
+                context_info = "🚧 **En RESISTENCIA** - Alta probabilidad reversión"
+
+            # Confirmaciones
+            confirmations_info = ""
+            if signal.timeframe_confirmations:
+                confirmations_info = f"\n🔗 **Confirmado en:** {', '.join(signal.timeframe_confirmations)}"
+
+            # Potencial según patrones históricos
+            # Potencial según patrones históricos
+            potential_info = ""
+            if signal.type == "bullish" and signal.context == "support":
+                potential_info = (
+                    "\n💎 **Potencial:** +20% (basado en patrones históricos)"
+                )
+            elif signal.type == "bearish" and signal.context == "resistance":
+                potential_info = (
+                    "\n⚠️ **Potencial:** Caída fuerte (basado en patrones históricos)"
                 )
 
-            message = f"""{confidence_emoji} **DIVERGENCIA DETECTADA** {confidence_emoji}
+            message = f"""{main_emoji} **DIVERGENCIA {direction} DETECTADA** {main_emoji}
 
 📌 **Par:** `{signal.symbol}`
-💰 **Precio:** {signal.price_level:.6f}
-{type_emoji} **Tipo:** {signal.type.replace('_', ' ').title()}
+💰 **Precio:** ${signal.price_level:.6f}
+{type_emoji} **Tipo:** {direction}
 📊 **RSI:** {signal.rsi_value:.1f}
-⏰ **TF:** {signal.timeframe}
-🎯 **Confianza:** {signal.confidence:.0f}%
-💪 **Fuerza:** {signal.pattern_strength.upper()}{ml_info}
+⏰ **Timeframe:** {signal.timeframe}
+{confidence_emoji} **Confianza:** {signal.confidence:.0f}%
 
 📈 **Métricas:**
-• RSI Div: {signal.rsi_divergence_strength:.1f}
-• Price Div: {signal.price_divergence_strength:.1f}%
+- Cambio Precio: {signal.price_change_percent:.1f}%
+- Fuerza RSI: {signal.rsi_divergence_strength:.1f}
+- Picos detectados: {signal.peak_count}
 
-🤖 **Bot Ultra v3.0** | {signal.timestamp.strftime('%H:%M:%S')}"""
+{context_info}{confirmations_info}{potential_info}
+
+⚡ **DETECCIÓN EN TIEMPO REAL** 
+🤖 Bot v4.0 | {signal.timestamp.strftime('%H:%M:%S')}
+
+📋 **Acción sugerida:** {"COMPRA cerca del soporte" if signal.type == "bullish" else "VENTA cerca de resistencia"}"""
 
             return message
 
         except Exception as e:
             logger.error(f"❌ Error formateando mensaje: {e}")
-            return f"🔥 **DIVERGENCIA DETECTADA**\n\n📌 **Par:** {signal.symbol}\n💰 **Precio:** {signal.price_level:.6f}"
+            return f"🚀 **DIVERGENCIA DETECTADA**\n\n📌 **Par:** {signal.symbol}\n💰 **Precio:** {signal.price_level:.6f}\n🎯 **Tipo:** {signal.type.upper()}"
 
-    def is_duplicate_alert_safe(self, signal: DivergenceSignal) -> bool:
-        """Verificar alertas duplicadas con seguridad"""
+    def is_duplicate_alert_realtime(self, signal: DivergenceSignal) -> bool:
+        """Verificar alertas duplicadas con cooldown inteligente"""
         try:
             alert_key = f"{signal.symbol}_{signal.timeframe}_{signal.type}"
 
@@ -958,18 +878,25 @@ class RSIDivergenceBot:
                 last_alert = self.sent_alerts[alert_key]
                 time_diff = datetime.now() - last_alert.get("timestamp", datetime.min)
 
+                # Cooldown dinámico según timeframe
                 cooldown_times = {
-                    "2h": 2700,  # 45 minutos
-                    "4h": 3600,  # 1 hora
-                    "6h": 5400,  # 1.5 horas
-                    "12h": 10800,  # 3 horas
-                    "1d": 14400,  # 4 horas
+                    "2h": 3600,  # 1 hora
+                    "4h": 5400,  # 1.5 horas
+                    "6h": 7200,  # 2 horas
+                    "8h": 10800,  # 3 horas
+                    "12h": 14400,  # 4 horas
+                    "1d": 21600,  # 6 horas
                 }
 
                 cooldown = cooldown_times.get(signal.timeframe, 7200)
 
+                # Si es muy reciente, es duplicado
                 if time_diff.total_seconds() < cooldown:
                     return True
+
+                # Si la nueva señal tiene mayor confianza, permitir
+                if signal.confidence > last_alert.get("confidence", 0) + 10:
+                    return False
 
             return False
 
@@ -978,7 +905,7 @@ class RSIDivergenceBot:
             return False
 
     async def send_telegram_alert_safe(self, message: str):
-        """Enviar alerta por Telegram con manejo de errores"""
+        """Enviar alerta por Telegram"""
         try:
             if not self.bot:
                 self.bot = Bot(token=self.telegram_token)
@@ -990,26 +917,27 @@ class RSIDivergenceBot:
                 disable_web_page_preview=True,
             )
             self.scan_stats["alerts_sent"] += 1
-            logger.info("✅ Alerta enviada correctamente")
+            logger.info("✅ Alerta enviada")
 
         except Exception as e:
-            logger.error(f"❌ Error enviando mensaje Telegram: {e}")
-            # Intentar sin markdown como fallback
+            logger.error(f"❌ Error enviando Telegram: {e}")
             try:
+                # Fallback sin markdown
+                clean_message = (
+                    message.replace("*", "").replace("`", "").replace("_", "")
+                )
                 await self.bot.send_message(
                     chat_id=self.chat_id,
-                    text=message.replace("*", "").replace("`", ""),
+                    text=clean_message,
                     disable_web_page_preview=True,
                 )
-                logger.info("✅ Alerta enviada sin formato")
+                logger.info("✅ Alerta enviada (sin formato)")
             except Exception as e2:
-                logger.error(f"❌ Error enviando mensaje sin formato: {e2}")
+                logger.error(f"❌ Error enviando sin formato: {e2}")
 
-    async def scan_single_pair_safe(self, symbol: str):
-        """Escanear un par con manejo de errores robusto"""
+    async def scan_single_pair_realtime(self, symbol: str):
+        """Escanear un par en tiempo real"""
         try:
-            scan_start = time.time()
-
             for timeframe in self.timeframes:
                 try:
                     # Rate limiting
@@ -1021,15 +949,23 @@ class RSIDivergenceBot:
                         continue
 
                     # Detectar divergencias
-                    signal = self.detect_divergence_safe(data, timeframe)
-
+                    signal = self.detect_divergence_realtime(data, timeframe)
                     if not signal:
                         continue
 
                     signal.symbol = symbol
 
+                    # Verificar confirmaciones en múltiples timeframes
+                    confirmations = self.check_multiple_timeframes(symbol, signal)
+                    signal.timeframe_confirmations = confirmations
+
+                    # Bonificación por confirmaciones múltiples
+                    if confirmations:
+                        signal.confidence += len(confirmations) * 3
+                        signal.confidence = min(signal.confidence, 98)
+
                     # Verificar duplicados
-                    if self.is_duplicate_alert_safe(signal):
+                    if self.is_duplicate_alert_realtime(signal):
                         continue
 
                     # Registrar alerta
@@ -1041,19 +977,18 @@ class RSIDivergenceBot:
                     }
 
                     # Enviar alerta
-                    message = await self.format_alert_message_safe(signal)
+                    message = await self.format_alert_message_realtime(signal)
                     await self.send_telegram_alert_safe(message)
 
-                    # Actualizar estadísticas
+                    # Estadísticas
                     self.scan_stats["divergences_found"] += 1
+                    self.scan_stats[f"{signal.type}_signals"] += 1
 
-                    # Guardar en historial si ML está habilitado
-                    if self.ml_model and len(self.pattern_history) < 1000:
-                        self.pattern_history.append(
-                            {"signal": signal, "timestamp": datetime.now()}
-                        )
+                    logger.info(
+                        f"🎯 Divergencia {signal.type} detectada: {symbol} {timeframe} ({signal.confidence:.0f}%)"
+                    )
 
-                    # Solo una alerta por par por ciclo
+                    # Solo una alerta por par por ciclo para evitar spam
                     break
 
                 except Exception as e:
@@ -1064,21 +999,23 @@ class RSIDivergenceBot:
             logger.error(f"❌ Error escaneando par {symbol}: {e}")
             self.scan_stats["scan_errors"] += 1
 
-    async def scan_all_pairs_safe(self):
-        """Escanear todos los pares con manejo de errores"""
+    async def scan_all_pairs_realtime(self):
+        """Escanear todos los pares en tiempo real"""
         try:
             scan_start = datetime.now()
-            logger.info(f"🔄 Iniciando escaneo de {len(self.active_pairs)} pares...")
+            logger.info(
+                f"🔄 Iniciando escaneo TIEMPO REAL de {len(self.active_pairs)} pares..."
+            )
 
-            # Procesar en batches pequeños para Railway
+            # Procesar en batches para Railway
             batch_size = 5
             pairs_list = list(self.active_pairs)
 
             for i in range(0, len(pairs_list), batch_size):
                 batch = pairs_list[i : i + batch_size]
 
-                # Procesar batch
-                tasks = [self.scan_single_pair_safe(symbol) for symbol in batch]
+                # Procesar batch en paralelo
+                tasks = [self.scan_single_pair_realtime(symbol) for symbol in batch]
                 await asyncio.gather(*tasks, return_exceptions=True)
 
                 # Pausa entre batches
@@ -1093,80 +1030,14 @@ class RSIDivergenceBot:
         except Exception as e:
             logger.error(f"❌ Error en escaneo completo: {e}")
 
-    def process_tradingview_alert(self):
-        """Procesar webhook de TradingView con seguridad"""
-        try:
-            data = request.get_json() or {}
-            logger.info(f"📡 Webhook TradingView recibido: {data}")
-
-            # Validar campos básicos
-            required_fields = ["symbol", "type"]
-            if not all(field in data for field in required_fields):
-                return jsonify({"error": "Campos requeridos faltantes"}), 400
-
-            # Crear señal básica
-            signal = DivergenceSignal(
-                symbol=data.get("symbol", "UNKNOWN"),
-                timeframe=data.get("timeframe", "1h"),
-                type=data.get("type", "bullish"),
-                confidence=float(data.get("confidence", 85)),
-                price_level=float(data.get("price", 0)),
-                rsi_value=float(data.get("rsi", 50)),
-                source="tradingview",
-            )
-
-            # Programar envío asíncrono
-            asyncio.create_task(self.send_tradingview_alert_safe(signal))
-
-            return jsonify(
-                {
-                    "status": "success",
-                    "message": "Alerta procesada",
-                    "timestamp": datetime.now().isoformat(),
-                }
-            )
-
-        except Exception as e:
-            logger.error(f"❌ Error procesando webhook: {e}")
-            return jsonify({"error": "Error interno del servidor"}), 500
-
-    async def send_tradingview_alert_safe(self, signal: DivergenceSignal):
-        """Enviar alerta de TradingView con seguridad"""
-        try:
-            message = f"""🌐 **ALERTA TRADINGVIEW** 🌐
-
-{await self.format_alert_message_safe(signal)}
-
-🔗 **Fuente:** TradingView → Railway
-⚡ **Procesamiento:** Automático"""
-
-            await self.send_telegram_alert_safe(message)
-            self.scan_stats["tradingview_alerts"] += 1
-
-        except Exception as e:
-            logger.error(f"❌ Error enviando alerta TradingView: {e}")
-
-    def start_flask_server(self):
-        """Iniciar servidor Flask con manejo de errores"""
-        try:
-            logger.info(f"🌐 Iniciando servidor Flask en puerto {self.port}")
-            self.app.run(
-                host="0.0.0.0",
-                port=self.port,
-                debug=False,
-                threaded=True,
-                use_reloader=False,  # Importante para Railway
-            )
-        except Exception as e:
-            logger.error(f"❌ Error iniciando Flask: {e}")
-            raise
+    # === COMANDOS DE TELEGRAM ===
 
     async def setup_telegram_commands_safe(self):
-        """Configurar comandos de Telegram con seguridad"""
+        """Configurar comandos de Telegram"""
         try:
             self.telegram_app = Application.builder().token(self.telegram_token).build()
 
-            # Comandos básicos
+            # Comandos
             self.telegram_app.add_handler(CommandHandler("start", self.cmd_start))
             self.telegram_app.add_handler(CommandHandler("help", self.cmd_help))
             self.telegram_app.add_handler(CommandHandler("status", self.cmd_status))
@@ -1176,8 +1047,9 @@ class RSIDivergenceBot:
             self.telegram_app.add_handler(
                 CommandHandler("remove", self.cmd_remove_pair)
             )
+            self.telegram_app.add_handler(CommandHandler("stats", self.cmd_stats))
 
-            # Handler para mensajes no reconocidos
+            # Handler para mensajes desconocidos
             self.telegram_app.add_handler(
                 MessageHandler(
                     filters.TEXT & ~filters.COMMAND, self.handle_unknown_message
@@ -1188,9 +1060,9 @@ class RSIDivergenceBot:
             await self.telegram_app.initialize()
             await self.telegram_app.start()
 
-            logger.info("✅ Comandos de Telegram configurados")
+            logger.info("✅ Comandos Telegram configurados")
 
-            # Ejecutar polling SIMPLIFICADO
+            # Polling
             await self.telegram_app.updater.start_polling(
                 allowed_updates=Update.ALL_TYPES, drop_pending_updates=True
             )
@@ -1198,95 +1070,63 @@ class RSIDivergenceBot:
         except Exception as e:
             logger.error(f"❌ Error configurando Telegram: {e}")
 
-    # === COMANDOS DE TELEGRAM MEJORADOS ===
-
     async def cmd_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Comando /start con manejo seguro del Markdown"""
+        """Comando /start"""
         try:
-            # Verificar estado ML de manera segura
-            ml_status = "❌ INACTIVO"
-            ml_details = ""
+            message = f"""🚀 RSI Divergence Bot v4.0 TIEMPO REAL
 
-            if SKLEARN_AVAILABLE and self.ml_model is not None:
-                try:
-                    if self.is_ml_ready():
-                        ml_status = "✅ ACTIVO"
-                        pattern_count = len(self.pattern_history)
-                        ml_details = f"\n🧠 Patterns: {pattern_count}"
-                    else:
-                        ml_status = "🔄 INICIALIZANDO"
-                except Exception:
-                    ml_status = "⚠️ ERROR"
-            elif not SKLEARN_AVAILABLE:
-                ml_status = "📦 LIBRERÍA NO DISPONIBLE"
-
-            # Usar texto simple sin Markdown para evitar errores de parsing
-            message = f"""🚀 Bot RSI Divergence Ultra v3.0 PREMIUM
-
-✅ Estado: ONLINE
+✅ Estado: ONLINE - Detección en tiempo real
 📊 Pares activos: {len(self.active_pairs)}
-🤖 ML: {ml_status}{ml_details}
+🎯 Calibrado con patrones reales exitosos
 
-🔧 Comandos:
+🔧 Comandos principales:
 /status - Estado del sistema
-/pairs - Ver pares monitoreados
+/pairs - Ver pares monitoreados  
 /add SYMBOL - Agregar par
 /remove SYMBOL - Quitar par
 /scan_now - Escaneo manual
+/stats - Estadísticas detalladas
 /help - Ayuda completa
 
-🎯 Optimizaciones PREMIUM:
-- Timeframe 2h para timing agresivo
-- Umbrales de alta confianza (82-90%)
-- Algoritmo de confianza optimizado
-- ML con compatibilidad de versiones
+🎯 Patrones detectados:
+- Divergencias alcistas en soporte (+20% histórico)
+- Divergencias bajistas en resistencia (caídas fuertes)
+- Confirmaciones múltiples timeframes
+- Detección ANTES del movimiento
 
-💎 Sistema premium funcionando 24/7 en Railway"""
+💎 Bot funcionando 24/7 con algoritmo v4.0"""
 
-            # Enviar sin parse_mode para evitar problemas de Markdown
             await update.message.reply_text(message)
 
         except Exception as e:
             logger.error(f"❌ Error en /start: {e}")
-            await update.message.reply_text(
-                "🤖 Bot RSI Divergence Ultra v3.0 PREMIUM ONLINE"
-            )
+            await update.message.reply_text("🤖 RSI Divergence Bot v4.0 ONLINE")
 
     async def cmd_status(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Comando /status con información ML"""
+        """Comando /status"""
         try:
-            # Estado ML detallado
-            ml_info = "❌ INACTIVO"
-            if SKLEARN_AVAILABLE:
-                if self.ml_model is not None and self.is_ml_ready():
-                    ml_info = f"✅ ACTIVO (Patterns: {len(self.pattern_history)})"
-                elif self.ml_model is not None:
-                    ml_info = "🔄 INICIALIZANDO"
-                else:
-                    ml_info = "⚠️ NO INICIALIZADO"
-            else:
-                ml_info = "📦 SKLEARN NO DISPONIBLE"
+            bullish_signals = self.scan_stats.get("bullish_signals", 0)
+            bearish_signals = self.scan_stats.get("bearish_signals", 0)
 
-            message = f"""📊 *Estado Bot RSI Ultra v3.0 PREMIUM*
+            message = f"""📊 *Estado Bot v4.0 TIEMPO REAL*
 
-🔄 *Estado:* ✅ ONLINE (PREMIUM ML)
+🔄 *Estado:* ✅ ONLINE (Detección en tiempo real)
 📈 *Pares monitoreados:* {len(self.active_pairs)}
-🌐 *Total disponibles:* {len(self.all_bybit_pairs)}
 ⏰ *Timeframes:* {', '.join(self.timeframes)}
 
-📊 *Estadísticas:*
+📊 *Estadísticas de hoy:*
 - Escaneos: {self.scan_stats.get('scans_completed', 0)}
-- Divergencias: {self.scan_stats.get('divergences_found', 0)}
+- Divergencias detectadas: {self.scan_stats.get('divergences_found', 0)}
+- Señales alcistas: {bullish_signals}
+- Señales bajistas: {bearish_signals}
 - Alertas enviadas: {self.scan_stats.get('alerts_sent', 0)}
-- TradingView: {self.scan_stats.get('tradingview_alerts', 0)}
 - Errores: {self.scan_stats.get('scan_errors', 0)}
 
-🤖 *Machine Learning:* {ml_info}
 💾 *Cache:* {len(self.price_data_cache)} pares
 ⚡ *Último escaneo:* {self.scan_stats.get('last_scan_duration', 0):.1f}s
 
-🌐 *Servidor:* Railway EU West
-🔗 *Webhook:* ACTIVO"""
+🎯 *Algoritmo v4.0:* Calibrado con patrones reales
+🌐 *Servidor:* Railway 24/7"""
 
             await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN)
 
@@ -1298,11 +1138,12 @@ class RSIDivergenceBot:
         """Comando /scan_now"""
         try:
             await update.message.reply_text(
-                "🔄 **Iniciando escaneo manual...**", parse_mode=ParseMode.MARKDOWN
+                "🔄 **Iniciando escaneo manual en tiempo real...**",
+                parse_mode=ParseMode.MARKDOWN,
             )
 
             start_time = datetime.now()
-            await self.scan_all_pairs_safe()
+            await self.scan_all_pairs_realtime()
             end_time = datetime.now()
 
             duration = (end_time - start_time).total_seconds()
@@ -1318,9 +1159,11 @@ class RSIDivergenceBot:
                 f"""✅ **Escaneo completado**
 
 ⏱️ **Duración:** {duration:.1f}s
-📊 **Pares:** {len(self.active_pairs)}
+📊 **Pares escaneados:** {len(self.active_pairs)}
 🎯 **Alertas hoy:** {recent_alerts}
-💾 **Cache:** {len(self.price_data_cache)}""",
+💾 **Cache activo:** {len(self.price_data_cache)}
+
+🔍 **Buscando divergencias en tiempo real...**""",
                 parse_mode=ParseMode.MARKDOWN,
             )
 
@@ -1329,26 +1172,50 @@ class RSIDivergenceBot:
             await update.message.reply_text("❌ Error ejecutando escaneo")
 
     async def cmd_pairs(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Comando /pairs - Ver todos los pares monitoreados"""
+        """Comando /pairs"""
         try:
             if not self.active_pairs:
-                await update.message.reply_text(
-                    "📭 No hay pares activos", parse_mode=ParseMode.MARKDOWN
-                )
+                await update.message.reply_text("📭 No hay pares activos")
                 return
 
-            # Organizar pares
             pairs_list = sorted(list(self.active_pairs))
 
-            # Dividir en grupos de 10 para mejor lectura
+            # Separar pares exitosos de otros
+            successful_pairs = [
+                "1000BONKUSDT",
+                "CPOOLUSDT",
+                "1000PEPEUSDT",
+                "AIOZUSDT",
+                "FARTCOINUSDT",
+                "FETUSDT",
+                "HYPEUSDT",
+                "INJUSDT",
+                "KAITOUSDT",
+                "POPCATUSDT",
+                "VIRTUALUSDT",
+            ]
+
+            successful_monitored = [p for p in pairs_list if p in successful_pairs]
+            other_monitored = [p for p in pairs_list if p not in successful_pairs]
+
             message = f"📊 **Pares Monitoreados ({len(self.active_pairs)} total)**\n\n"
 
-            for i in range(0, len(pairs_list), 10):
-                batch = pairs_list[i : i + 10]
-                message += "• " + " • ".join(batch) + "\n"
+            if successful_monitored:
+                message += "🎯 **Pares con patrones exitosos:**\n"
+                for i in range(0, len(successful_monitored), 5):
+                    batch = successful_monitored[i : i + 5]
+                    message += "• " + " • ".join(batch) + "\n"
+                message += "\n"
 
-            message += f"\n💡 Usa `/add SYMBOL` para agregar pares"
-            message += f"\n💡 Usa `/remove SYMBOL` para quitar pares"
+            if other_monitored:
+                message += "📈 **Otros pares monitoreados:**\n"
+                for i in range(0, len(other_monitored), 5):
+                    batch = other_monitored[i : i + 5]
+                    message += "• " + " • ".join(batch) + "\n"
+
+            message += (
+                f"\n💡 `/add SYMBOL` para agregar\n💡 `/remove SYMBOL` para quitar"
+            )
 
             await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN)
 
@@ -1357,22 +1224,19 @@ class RSIDivergenceBot:
             await update.message.reply_text("❌ Error mostrando pares")
 
     async def cmd_add_pair(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Comando /add SYMBOL - Agregar par"""
+        """Comando /add"""
         try:
             if not context.args:
                 await update.message.reply_text(
-                    "📝 **Uso:** `/add SYMBOL`\n\n**Ejemplos:**\n• `/add DOGEUSDT`\n• `/add POPCATUSDT`",
+                    "📝 **Uso:** `/add SYMBOL`\n\n**Ejemplos:**\n• `/add DOGEUSDT`\n• `/add SHIBUSDT`",
                     parse_mode=ParseMode.MARKDOWN,
                 )
                 return
 
             symbol = context.args[0].upper()
-
-            # Verificar que termine en USDT
             if not symbol.endswith("USDT"):
                 symbol += "USDT"
 
-            # Verificar si ya está activo
             if symbol in self.active_pairs:
                 await update.message.reply_text(
                     f"⚠️ **{symbol}** ya está siendo monitoreado",
@@ -1380,20 +1244,18 @@ class RSIDivergenceBot:
                 )
                 return
 
-            # Verificar que existe en Bybit (si la lista está disponible)
+            # Verificar si existe en Bybit
             if self.all_bybit_pairs and symbol not in self.all_bybit_pairs:
-                # Buscar similares
                 search_term = symbol.replace("USDT", "")
                 similar = [p for p in self.all_bybit_pairs if search_term in p]
 
                 message = f"❌ **{symbol}** no encontrado en Bybit"
-                if similar[:5]:  # Mostrar solo los primeros 5
+                if similar[:5]:
                     message += f"\n\n🔍 **Similares:**\n• " + "\n• ".join(similar[:5])
 
                 await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN)
                 return
 
-            # Agregar el par
             self.active_pairs.add(symbol)
 
             await update.message.reply_text(
@@ -1406,18 +1268,16 @@ class RSIDivergenceBot:
             await update.message.reply_text("❌ Error agregando par")
 
     async def cmd_remove_pair(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Comando /remove SYMBOL - Quitar par"""
+        """Comando /remove"""
         try:
             if not context.args:
                 await update.message.reply_text(
-                    "📝 **Uso:** `/remove SYMBOL`\n\n**Ejemplos:**\n• `/remove APEUSDT`\n• `/remove SHIBUSDT`",
+                    "📝 **Uso:** `/remove SYMBOL`\n\n**Ejemplos:**\n• `/remove DOGEUSDT`\n• `/remove SHIBUSDT`",
                     parse_mode=ParseMode.MARKDOWN,
                 )
                 return
 
             symbol = context.args[0].upper()
-
-            # Verificar que termine en USDT
             if not symbol.endswith("USDT"):
                 symbol += "USDT"
 
@@ -1439,39 +1299,93 @@ class RSIDivergenceBot:
             logger.error(f"❌ Error en /remove: {e}")
             await update.message.reply_text("❌ Error removiendo par")
 
+    async def cmd_stats(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Comando /stats - Estadísticas detalladas"""
+        try:
+            # Calcular estadísticas avanzadas
+            total_signals = self.scan_stats.get("divergences_found", 0)
+            bullish_signals = self.scan_stats.get("bullish_signals", 0)
+            bearish_signals = self.scan_stats.get("bearish_signals", 0)
+
+            success_rate = 0
+            if total_signals > 0:
+                success_rate = (bullish_signals + bearish_signals) / total_signals * 100
+
+            # Alertas por día
+            today_alerts = len(
+                [
+                    a
+                    for a in self.sent_alerts.values()
+                    if a.get("date") == datetime.now().date()
+                ]
+            )
+
+            message = f"""📈 **Estadísticas Detalladas Bot v4.0**
+
+📊 **Rendimiento:**
+- Total divergencias: {total_signals}
+- Señales alcistas: {bullish_signals}
+- Señales bajistas: {bearish_signals}
+- Tasa de detección: {success_rate:.1f}%
+
+📅 **Hoy:**
+- Alertas enviadas: {today_alerts}
+- Escaneos completados: {self.scan_stats.get('scans_completed', 0)}
+- Errores: {self.scan_stats.get('scan_errors', 0)}
+
+⚡ **Performance:**
+- Último escaneo: {self.scan_stats.get('last_scan_duration', 0):.1f}s
+- Cache activo: {len(self.price_data_cache)} pares
+- Pares monitoreados: {len(self.active_pairs)}
+
+🎯 **Patrones detectados:**
+- Divergencias en soporte/resistencia
+- Confirmaciones múltiples timeframes  
+- Detección en tiempo real
+- Basado en +20% histórico
+
+🤖 **Bot v4.0** - Calibrado con patrones reales exitosos"""
+
+            await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN)
+
+        except Exception as e:
+            logger.error(f"❌ Error en /stats: {e}")
+            await update.message.reply_text("❌ Error mostrando estadísticas")
+
     async def cmd_help(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Comando /help"""
         try:
-            message = """📋 **Ayuda - Bot RSI Ultra v3.0 PREMIUM**
+            message = """📋 **RSI Divergence Bot v4.0 - TIEMPO REAL**
 
 🤖 **¿Qué hace?**
-Detecta divergencias RSI premium en múltiples timeframes:
-• Timeframe 2h para timing agresivo
-• Umbrales de alta confianza (82-90%)
-• Machine Learning avanzado
-• Solo alertas de calidad premium
+Detecta divergencias RSI EN TIEMPO REAL antes de que ocurran los movimientos. Calibrado con patrones reales que han dado +20% de ganancias.
 
-📊 **Comandos principales:**
-• `/start` - Información inicial
-• `/status` - Estado completo del sistema
-• `/pairs` - Ver pares monitoreados
-• `/add SYMBOL` - Agregar par (ej: /add POPCATUSDT)
-• `/remove SYMBOL` - Quitar par (ej: /remove APEUSDT)
-• `/scan_now` - Escaneo manual inmediato
-• `/help` - Esta ayuda
+📊 **Tipos de divergencias:**
+- **Alcistas:** Precio LL, RSI HL → Rebotes +20%
+- **Bajistas:** Precio HH, RSI LH → Caídas fuertes
 
-🔧 **Características PREMIUM:**
-• ✅ Timeframes: 2h, 4h, 6h, 12h, 1d
-• ✅ Confianza optimizada (82-90%)
-• ✅ Clasificación: WEAK/MEDIUM/STRONG/VERY_STRONG
-• ✅ ML con probabilidades avanzadas
-• ✅ Cache inteligente y rate limiting
-• ✅ Detección temprana de divergencias
+🔧 **Comandos:**
+- `/start` - Información inicial
+- `/status` - Estado completo del sistema
+- `/pairs` - Ver pares monitoreados
+- `/add SYMBOL` - Agregar par al monitoreo
+- `/remove SYMBOL` - Quitar par del monitoreo
+- `/scan_now` - Escaneo manual inmediato
+- `/stats` - Estadísticas detalladas
+- `/help` - Esta ayuda
 
-🌐 **Webhook TradingView:**
-`https://tu-dominio.railway.app/webhook/tradingview`
+🎯 **Características v4.0:**
+- ✅ Detección en tiempo real (ANTES del movimiento)
+- ✅ Calibrado con patrones exitosos reales
+- ✅ Confirmaciones múltiples timeframes
+- ✅ Detección de soporte/resistencia
+- ✅ Algoritmo basado en +20% histórico
+- ✅ Timeframes: 2h, 4h, 6h, 8h, 12h, 1d
 
-💎 **Sistema premium 24/7 - Solo alertas de alta calidad**"""
+💎 **Pares con patrones exitosos:**
+1000BONKUSDT, CPOOLUSDT, 1000PEPEUSDT, AIOZUSDT, FARTCOINUSDT, FETUSDT, HYPEUSDT, INJUSDT, KAITOUSDT, POPCATUSDT, VIRTUALUSDT
+
+🚀 **Sistema 24/7 - Detección en tiempo real**"""
 
             await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN)
 
@@ -1492,8 +1406,10 @@ Detecta divergencias RSI premium en múltiples timeframes:
         except Exception as e:
             logger.error(f"❌ Error en mensaje desconocido: {e}")
 
-    async def smart_cache_cleanup_safe(self):
-        """Limpieza de cache con seguridad"""
+    # === LIMPIEZA Y MANTENIMIENTO ===
+
+    async def cleanup_cache_and_alerts(self):
+        """Limpieza inteligente"""
         try:
             now = time.time()
 
@@ -1510,7 +1426,7 @@ Detecta divergencias RSI premium en múltiples timeframes:
                 except KeyError:
                     pass
 
-            # Limpiar alertas antiguas
+            # Limpiar alertas antiguas (24 horas)
             cutoff = datetime.now() - timedelta(hours=24)
             self.sent_alerts = {
                 k: v
@@ -1522,54 +1438,60 @@ Detecta divergencias RSI premium en múltiples timeframes:
                 logger.info(f"🧹 Cache limpiado: {len(expired_keys)} entradas")
 
         except Exception as e:
-            logger.error(f"❌ Error en limpieza de cache: {e}")
+            logger.error(f"❌ Error en limpieza: {e}")
 
-    async def start_monitoring_safe(self):
-        """Iniciar monitoreo con manejo de errores robusto"""
-        logger.info("🚀 Iniciando Bot RSI Divergence Ultra v3.0 PREMIUM")
+    # === LOOP PRINCIPAL ===
+
+    async def start_monitoring_realtime(self):
+        """Iniciar monitoreo en tiempo real"""
+        logger.info("🚀 Iniciando Bot RSI Divergence v4.0 TIEMPO REAL")
 
         try:
             # Configurar Telegram
             await self.setup_telegram_commands_safe()
 
             # Mensaje de inicio
-            startup_message = f"""🚀 **Bot RSI Divergence Ultra v3.0 PREMIUM**
+            startup_message = f"""🚀 **Bot RSI Divergence v4.0 TIEMPO REAL**
 
-🌐 **Plataforma:** Railway EU West
-🛠️ **Versión:** PREMIUM con timeframe 2h y alta confianza
+🌐 **Estado:** ONLINE en Railway
+🔍 **Modo:** Detección en tiempo real
 📊 **Pares monitoreados:** {len(self.active_pairs)}
 ⏰ **Timeframes:** {', '.join(self.timeframes)}
 
-✨ **Mejoras PREMIUM aplicadas:**
-• ✅ Timeframe 2h para timing agresivo
-• ✅ Umbrales de alta confianza (82-90%)
-• ✅ Algoritmo de confianza optimizado
-• ✅ Clasificación de fuerza mejorada (WEAK/MEDIUM/STRONG/VERY_STRONG)
-• ✅ ML con compatibilidad de versiones
-• ✅ Cache inteligente y rate limiting
+✨ **Mejoras v4.0:**
+- ✅ Algoritmo calibrado con patrones reales exitosos
+- ✅ Detección ANTES del movimiento (no después)
+- ✅ Confirmaciones múltiples timeframes
+- ✅ Contexto de soporte/resistencia
+- ✅ Basado en +20% histórico
 
-🎯 **Solo alertas de alta calidad - Sistema premium 24/7**
+🎯 **Patrones objetivo:**
+- Divergencias alcistas en soporte → +20%
+- Divergencias bajistas en resistencia → Caídas fuertes
 
-Usa `/help` para ver todos los comandos."""
+⚡ **Sistema 24/7 funcionando en tiempo real**
+
+Usa `/help` para comandos completos."""
 
             await self.send_telegram_alert_safe(startup_message)
 
-            # Loop principal con manejo de errores
+            # Loop principal optimizado
             while True:
                 try:
                     loop_start = time.time()
 
-                    # Escaneo principal
-                    await self.scan_all_pairs_safe()
+                    # Escaneo principal en tiempo real
+                    await self.scan_all_pairs_realtime()
 
-                    # Limpieza de cache
-                    await self.smart_cache_cleanup_safe()
+                    # Limpieza periódica
+                    await self.cleanup_cache_and_alerts()
 
                     # Estadísticas de rendimiento
                     loop_duration = time.time() - loop_start
+                    logger.info(f"🔄 Ciclo completado en {loop_duration:.1f}s")
 
-                    # Pausa inteligente (10 minutos)
-                    await asyncio.sleep(600)
+                    # Pausa inteligente: 5 minutos para timeframes cortos
+                    await asyncio.sleep(300)  # 5 minutos
 
                 except Exception as e:
                     logger.error(f"❌ Error en loop principal: {e}")
@@ -1580,96 +1502,83 @@ Usa `/help` para ver todos los comandos."""
         except Exception as e:
             logger.error(f"❌ Error crítico en monitoreo: {e}")
             logger.error(traceback.format_exc())
-            # Reintentar después de un tiempo
             await asyncio.sleep(300)
 
-    def run_safe(self):
-        """Punto de entrada ultra seguro"""
-        logger.info("🚀 Iniciando Bot RSI Divergence Ultra v3.0 PREMIUM...")
+    def start_flask_server(self):
+        """Iniciar servidor Flask"""
+        try:
+            logger.info(f"🌐 Iniciando servidor Flask en puerto {self.port}")
+            self.app.run(
+                host="0.0.0.0",
+                port=self.port,
+                debug=False,
+                threaded=True,
+                use_reloader=False,
+            )
+        except Exception as e:
+            logger.error(f"❌ Error iniciando Flask: {e}")
+            raise
+
+    def run_realtime(self):
+        """Punto de entrada principal para tiempo real"""
+        logger.info("🚀 Iniciando RSI Divergence Bot v4.0 TIEMPO REAL...")
 
         try:
             # Iniciar Flask en thread separado
             flask_thread = threading.Thread(target=self.start_flask_server, daemon=True)
             flask_thread.start()
-            logger.info("✅ Servidor Flask iniciado correctamente")
+            logger.info("✅ Servidor Flask iniciado")
 
-            # Pequeña pausa para asegurar que Flask esté listo
+            # Pausa para asegurar Flask
             time.sleep(2)
 
-            # Iniciar loop principal
-            asyncio.run(self.start_monitoring_safe())
+            # Iniciar loop principal en tiempo real
+            asyncio.run(self.start_monitoring_realtime())
 
         except KeyboardInterrupt:
             logger.info("🛑 Bot detenido por usuario")
         except Exception as e:
             logger.error(f"❌ Error crítico: {e}")
             logger.error(traceback.format_exc())
-            # En caso de error crítico, reintentar
             time.sleep(30)
-            logger.info("🔄 Reintentando inicialización...")
+            logger.info("🔄 Reintentando...")
 
 
-# === FUNCIONES DE UTILIDAD SEGURAS ===
-
-
-def safe_float_conversion(value, default=0.0):
-    """Conversión segura a float"""
-    try:
-        return float(value)
-    except (ValueError, TypeError):
-        return default
-
-
-def safe_int_conversion(value, default=0):
-    """Conversión segura a int"""
-    try:
-        return int(value)
-    except (ValueError, TypeError):
-        return default
-
-
-def validate_environment():
-    """Validar variables de entorno"""
-    required_vars = ["TELEGRAM_TOKEN", "CHAT_ID"]
-    missing_vars = []
-
-    for var in required_vars:
-        if not os.getenv(var):
-            missing_vars.append(var)
-
-    if missing_vars:
-        raise ValueError(
-            f"❌ Variables de entorno faltantes: {', '.join(missing_vars)}"
-        )
-
-    logger.info("✅ Variables de entorno validadas")
-
-
-# === PUNTO DE ENTRADA PRINCIPAL ===
+# === FUNCIÓN PRINCIPAL ===
 
 
 def main():
-    """Función principal ultra segura para Railway"""
+    """Función principal para Railway"""
     try:
-        # Validar entorno
-        validate_environment()
+        # Validar variables de entorno
+        required_vars = ["TELEGRAM_TOKEN", "CHAT_ID"]
+        missing_vars = []
 
-        # Crear e iniciar bot
-        logger.info("🚀 Iniciando Bot RSI Divergence Ultra v3.0 PREMIUM...")
-        bot = RSIDivergenceBot()
-        bot.run_safe()
+        for var in required_vars:
+            if not os.getenv(var):
+                missing_vars.append(var)
+
+        if missing_vars:
+            raise ValueError(f"❌ Variables faltantes: {', '.join(missing_vars)}")
+
+        logger.info("✅ Variables de entorno validadas")
+
+        # Crear e iniciar bot v4.0
+        logger.info("🚀 Iniciando Bot RSI Divergence v4.0 TIEMPO REAL...")
+        bot = RSIDivergenceBotV4()
+        bot.run_realtime()
 
     except Exception as e:
-        logger.error(f"❌ Error crítico iniciando bot: {e}")
+        logger.error(f"❌ Error crítico iniciando bot v4.0: {e}")
         logger.error(traceback.format_exc())
 
-        # En producción, podrías querer reintentar
+        # Reintentar en caso de error crítico
         time.sleep(10)
-        logger.info("🔄 Reintentando inicialización después del error...")
+        logger.info("🔄 Reintentando inicialización...")
 
         try:
-            bot = RSIDivergenceBot()
-            bot.run_safe()
+            bot = RSIDivergenceBotV4()
+            bot.run_realtime()
         except Exception as e2:
             logger.error(f"❌ Segundo intento falló: {e2}")
             raise
